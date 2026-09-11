@@ -71,21 +71,51 @@ body {
     pointer-events: none;
 }
 
-/* Brand strip etched on the crown (pure decoration). */
+/* Brand strip etched on the crown (pure decoration).
+   Centered the same way Bootstrap's .text-center works: full-width
+   block (left/right pinned to 0) + text-align:center. Unlike a
+   left:50% + translateX(-50%) transform, this is a plain text layout
+   that never drifts sub-pixel, can't overflow, and stays perfectly
+   centered relative to the calculator's full width on every engine
+   (Chrome, Firefox, Safari/iOS, Android) at any viewport size. The
+   text-indent compensates for the trailing letter-space so the glyphs
+   — not the letter-spacing box — are what's visually centered. */
 .calculator-grid::after {
     content: "CALCULATOR PRO MAX";
     position: absolute;
-    top: 10px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 0;
+    right: 0;
+    text-align: center;
+    /* Vertically balanced within the responsive crown padding
+       (padding-top: clamp(30px, 7vw, 38px)) so spacing above and
+       below the title stays consistent at every breakpoint. */
+    top: clamp(11px, 2.6vw, 15px);
     font-size: .56rem;
+    line-height: 2;
     font-weight: 600;
     letter-spacing: .28em;
     text-indent: .28em;
     white-space: nowrap;
-    color: rgba(255,255,255,.38);
-    text-shadow: 0 1px 0 rgba(0,0,0,.6);
+    /* Premium metallic silver: brushed gradient engraved into the casing.
+       Fallback color first; background-clip:text layers the metal sheen on
+       top. Tones match the back logo + fine print exactly (same alloy). */
+    color: #b9bfc9;
+    background-image: linear-gradient(180deg,
+        #eef1f5 0%, #c3c9d2 30%, #f5f7fa 48%,
+        #878e9a 54%, #c9cfd8 72%, #e8ebef 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    /* Engraved edge: soft shadow below the glyphs (renders behind the
+       clipped fill in all engines) + a faint catch-light above. */
+    text-shadow:
+        0 1px 1px rgba(0, 0, 0, .55),
+        0 -1px 0 rgba(255, 255, 255, .08);
     pointer-events: none;
+    /* Never contribute to layout or cause overflow on tiny screens. */
+    width: 100%;
+    max-width: 100%;
+    z-index: 0;
 }
 
 .calculator-grid > button {
@@ -816,16 +846,20 @@ body {
     background: linear-gradient(180deg, rgba(0, 0, 0, .18), rgba(0, 0, 0, 0) 34%);
 }
 
-/* Engraved Apple logo: dark metal fill, dark inner shadow above and a thin
-   light catch-light below the glyph edges — the classic "stamped into the
-   case" look rather than a flat sticker. Scales with the viewport. */
+/* Engraved Apple logo: silver-alloy fill via the SVG's #apple-silver-gradient
+   (kept in markup so glyph + text stay one material), with a dark inner shadow
+   above and a thin light catch-light below the glyph edges — the classic
+   "stamped into the case" look rather than a flat sticker. Scales with viewport. */
 .apple-logo {
     width: clamp(54px, 17vw, 82px);
     height: auto;
-    color: #38404c;
+    /* Same silver alloy as the brand title + fine print: the fill comes
+       from the #apple-silver-gradient defined inside the SVG, so glyph
+       and text tones stay identical. Engraved edge shadows (below/above)
+       keep the "stamped into the case" look — no glow. */
     filter:
         drop-shadow(0 1px 0 rgba(0, 0, 0, .55))
-        drop-shadow(0 -1px 0 rgba(255, 255, 255, .12))
+        drop-shadow(0 -1px 0 rgba(255, 255, 255, .14))
         drop-shadow(0 2px 3px rgba(0, 0, 0, .35));
     user-select: none;
 }
@@ -838,8 +872,19 @@ body {
     letter-spacing: .3em;
     text-indent: .3em;
     white-space: nowrap;
-    color: rgba(255, 255, 255, .22);
-    text-shadow: 0 1px 0 rgba(0, 0, 0, .55);
+    /* Same metallic silver alloy as the front title, a touch dimmer so the
+       logo stays the hero. Brushed gradient via background-clip:text with
+       a solid fallback; engraved edge shadows below + catch-light above. */
+    color: #a8aeb8;
+    background-image: linear-gradient(180deg,
+        #dde1e7 0%, #b4bac4 30%, #e9ecf0 48%,
+        #7b828e 54%, #bcc2cc 72%, #dce0e6 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+    text-shadow:
+        0 1px 1px rgba(0, 0, 0, .5),
+        0 -1px 0 rgba(255, 255, 255, .06);
 }
 
 /* Flip indicator on the back: subtle engraved hint showing users they can
