@@ -91,7 +91,7 @@ body {
        below the title stays consistent at every breakpoint. */
     top: clamp(11px, 2.6vw, 15px);
     font-size: .56rem;
-    line-height: 2;
+    line-height: 2.2;
     font-weight: 600;
     letter-spacing: .28em;
     text-indent: .28em;
