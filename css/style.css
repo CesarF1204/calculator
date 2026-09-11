@@ -31,13 +31,14 @@ body {
     --radius-key: 13px;
     --radius-display: 15px;
     position: relative;
-    width: min(400px, 100%);
+    width: 100%; /* fills .calculator-stage — the cap lives on the stage */
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     grid-template-rows: clamp(7.75rem, 30vw, 9rem) repeat(5, var(--row));
-    gap: clamp(8px, 2.4vw, 11px);
+    gap: clamp(10px, 3vw, 14px);
     padding: clamp(15px, 4vw, 22px);
     padding-top: clamp(30px, 7vw, 38px);
+    padding-bottom: clamp(22px, 5.5vw, 30px);
     /* Casing material: layered bevels + depth Bootstrap shadows can't do. */
     border: 1px solid #0b0d11;
     border-radius: var(--radius-body);
@@ -559,7 +560,7 @@ body {
     .calculator-grid {
         --radius-body: 21px;
         --radius-key: 11px;
-        gap: 8px;
+        gap: 10px;
     }
     .output { padding: 1.7rem 0.9rem 0.75rem; }
 }
@@ -568,5 +569,255 @@ body {
     .calculator-grid {
         --row: max(2.85rem, min(3.9rem, calc((100dvh - 15.5rem) / 5)));
         grid-template-rows: clamp(6.5rem, 22dvh, 8rem) repeat(5, var(--row));
+    }
+}
+
+/* =====================================================================
+   3D FLIP RIG — physical "turn it over" interaction
+   .calculator-stage  : perspective camera (no layout impact)
+   .calculator-flip   : rotating slab (preserve-3d), sized by the front grid
+   .calculator-grid   : FRONT face (unchanged, now backface-hidden)
+   .calculator-back   : BACK face, mirrors the casing, engraved Apple logo
+   #flip-toggle       : anchored to the stage so it never shifts layout
+   ===================================================================== */
+.calculator-stage {
+    position: relative;
+    /* The stage IS the flex item of <main>, so 100% here resolves against
+       a definite size — this is what keeps the device at its capped width. */
+    width: min(480px, 100%);
+    perspective: 1600px;
+    perspective-origin: 50% 42%;
+}
+
+.calculator-flip {
+    --radius-body: 26px; /* shared with the back face (media query keeps both in sync) */
+    position: relative;
+    transform-style: preserve-3d;
+    transform: rotateY(0deg) translateZ(0);
+    will-change: transform;
+}
+
+.calculator-flip.is-flipped {
+    transform: rotateY(180deg) translateZ(0);
+}
+
+/* The turn: 90deg at the midpoint with translateZ lift reads as the device
+   being picked up, rotated, and set back down. Ease mirrors real inertia. */
+.calculator-flip.is-flipping-to-back {
+    animation: flip-to-back 780ms cubic-bezier(.45, .05, .25, 1) both;
+}
+
+.calculator-flip.is-flipping-to-front {
+    animation: flip-to-front 780ms cubic-bezier(.45, .05, .25, 1) both;
+}
+
+@keyframes flip-to-back {
+    0%   { transform: rotateY(0deg) translateZ(0); }
+    50%  { transform: rotateY(90deg) translateZ(48px); }
+    100% { transform: rotateY(180deg) translateZ(0); }
+}
+
+@keyframes flip-to-front {
+    0%   { transform: rotateY(180deg) translateZ(0); }
+    50%  { transform: rotateY(90deg) translateZ(48px); }
+    100% { transform: rotateY(0deg) translateZ(0); }
+}
+
+/* FRONT face: unchanged grid, just hidden once it turns away.
+   pointer-events: none ensures keys/switches on the front can't be clicked
+   through when viewing the back side. */
+.calculator-grid {
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+}
+
+.calculator-flip.is-flipped .calculator-grid {
+    pointer-events: none;
+}
+
+/* While mid-turn, the whole rig ignores clicks so keys can't be "pressed
+   through" the device. */
+.calculator-stage.is-flipping {
+    pointer-events: none;
+}
+
+/* Flip wrap: container for the flip button positioned underneath the calculator.
+   Ensures the button stays visible and clickable on both sides of the flip.
+   High z-index keeps it above the 3D-transformed calculator. */
+.flip-wrap {
+    position: relative;
+    z-index: 100;
+    isolation: isolate;
+}
+.flip-toggle {
+    min-width: 3.5rem;
+    height: 3rem;
+    padding: 0 1.25rem;
+    border-radius: 0.6rem !important;
+    color: #cdd3dc;
+    cursor: pointer;
+    border: 1px solid rgba(8, 10, 14, .55) !important;
+    background: linear-gradient(180deg, #626c7f 0%, #4a5262 55%, #383f4d 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .28),
+        0 3px 0 rgba(9, 11, 15, .9),
+        0 6px 12px rgba(0, 0, 0, .45);
+    transition: transform 100ms ease, box-shadow 120ms ease, filter 120ms ease;
+    -webkit-tap-highlight-color: transparent;
+}
+
+.flip-toggle:hover {
+    filter: brightness(1.06);
+}
+
+.flip-toggle:active {
+    transform: translateY(2px);
+    box-shadow:
+        inset 0 1px 3px rgba(0, 0, 0, .3),
+        0 1px 0 rgba(9, 11, 15, .9),
+        0 2px 5px rgba(0, 0, 0, .4);
+}
+
+.flip-toggle:focus-visible {
+    outline: 2px solid rgba(240, 169, 59, .85);
+    outline-offset: 2px;
+}
+
+.flip-icon {
+    pointer-events: none;
+    flex-shrink: 0;
+}
+
+/* Hides the currently-irrelevant flip button. Only one of the two dedicated
+   flip buttons ("Flip to back" / "Flip to front") is visible at a time. */
+.is-hidden {
+    display: none !important;
+}
+
+.flip-label-text {
+    font-size: 0.85rem;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    line-height: 1;
+}
+
+/* =====================================================================
+   BACK COVER — same physical language as the front: casing gradient,
+   border, rounded corners, bevel highlights and recessed panel line.
+   Clean & minimal: engraved Apple logo + etched fine print only.
+   ===================================================================== */
+.calculator-back {
+    position: absolute;
+    inset: 0;
+    z-index: 0;
+    transform: rotateY(180deg);
+    -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
+    border: 1px solid #0b0d11;
+    border-radius: var(--radius-body);
+    outline: 1px solid rgba(255, 255, 255, .07);
+    outline-offset: -2px;
+    /* Same casing material, a touch lighter: the back of real plastic
+       catches ambient light from the other side. */
+    background:
+        linear-gradient(90deg, rgba(255, 255, 255, .05) 0%, rgba(255, 255, 255, 0) 14%),
+        linear-gradient(270deg, rgba(0, 0, 0, .25) 0%, rgba(0, 0, 0, 0) 16%),
+        linear-gradient(168deg, #4b5361 0%, #343b47 24%, #262b34 60%, #1b1f26 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255, 255, 255, .3),
+        inset 0 -2px 0 rgba(0, 0, 0, .45),
+        inset 2px 0 0 rgba(255, 255, 255, .05),
+        inset -2px 0 0 rgba(0, 0, 0, .25),
+        0 24px 48px rgba(0, 0, 0, .55),
+        0 6px 16px rgba(0, 0, 0, .5);
+}
+
+/* Recessed back panel: the molded inner line of a real housing. */
+.calculator-back-face {
+    position: absolute;
+    inset: 9px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: clamp(.9rem, 3.5vw, 1.4rem);
+    border-radius: calc(var(--radius-body) - 8px);
+    border: 1px solid rgba(255, 255, 255, .05);
+    box-shadow: inset 0 2px 8px rgba(0, 0, 0, .5), 0 1px 0 rgba(255, 255, 255, .07);
+    background: linear-gradient(180deg, rgba(0, 0, 0, .18), rgba(0, 0, 0, 0) 34%);
+}
+
+/* Engraved Apple logo: dark metal fill, dark inner shadow above and a thin
+   light catch-light below the glyph edges — the classic "stamped into the
+   case" look rather than a flat sticker. Scales with the viewport. */
+.apple-logo {
+    width: clamp(54px, 17vw, 82px);
+    height: auto;
+    color: #38404c;
+    filter:
+        drop-shadow(0 1px 0 rgba(0, 0, 0, .55))
+        drop-shadow(0 -1px 0 rgba(255, 255, 255, .12))
+        drop-shadow(0 2px 3px rgba(0, 0, 0, .35));
+    user-select: none;
+}
+
+/* Regulatory-style etching under the logo (decorative only). */
+.back-fineprint {
+    margin: 0;
+    font-size: clamp(.5rem, 2vw, .58rem);
+    font-weight: 600;
+    letter-spacing: .3em;
+    text-indent: .3em;
+    white-space: nowrap;
+    color: rgba(255, 255, 255, .22);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, .55);
+}
+
+/* Flip indicator on the back: subtle engraved hint showing users they can
+   flip back to the front. Positioned at the bottom of the back face. */
+.back-flip-indicator {
+    padding: 0.5rem 0.9rem;
+    border-radius: 2rem;
+    background: rgba(0, 0, 0, .25);
+    border: 1px solid rgba(255, 255, 255, .06);
+    opacity: .7;
+    user-select: none;
+}
+
+.back-flip-icon {
+    color: rgba(255, 255, 255, .45);
+    flex-shrink: 0;
+}
+
+.back-flip-text {
+    font-size: clamp(.55rem, 2vw, .65rem);
+    font-weight: 600;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: rgba(255, 255, 255, .45);
+    white-space: nowrap;
+}
+
+/* Reduced motion: swap sides instantly, no rotation/lift. */
+@media (prefers-reduced-motion: reduce) {
+    .calculator-flip,
+    .calculator-flip.is-flipping-to-back,
+    .calculator-flip.is-flipping-to-front {
+        animation: none;
+        transition: none;
+    }
+}
+
+/* Keep both faces + the docked control in sync on small screens. */
+@media (max-width: 430px) {
+    .calculator-flip {
+        --radius-body: 21px;
+    }
+
+    .flip-toggle {
+        top: -11px;
+        right: -9px;
+        width: 2rem;
+        height: 2rem;
     }
 }

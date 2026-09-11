@@ -1,4 +1,4 @@
-/**
+﻿/**
 * DOCU: This function is used to create a calculator instance. <br>
 * It is a factory that encapsulates the calculator's internal state and <br>
 * exposes the operations (appendNumber, chooseOperation, compute, clear, <br>
@@ -320,6 +320,10 @@ const equalsButton = document.querySelector('#equals');
 */
 const powerSwitch = document.querySelector('#power-switch');
 const powerSwitchLabel = document.querySelector('#power-switch-label');
+const flipToggle = document.querySelector('#flip-toggle');
+const flipToggleFront = document.querySelector('#flip-toggle-front');
+const calculatorStage = document.querySelector('.calculator-stage');
+const calculatorFlip = document.querySelector('.calculator-flip');
 const toast = document.querySelector('#toast');
 const toastMessage = document.querySelector('#toast-message');
 const toastProgress = document.querySelector('.toast-progress');
@@ -584,6 +588,76 @@ powerSwitch.addEventListener('click', () => {
        focus outline — exactly the unwanted "switch is focusing" effect. */
     powerSwitch.blur();
 });
+
+/* ------------------------------------------------------------------
+   Flip (turn the calculator over) behaviour
+   ------------------------------------------------------------------ */
+/**
+ * DOCU: Shows the flip button matching the currently visible side and hides the other. <br>
+ * Front side visible shows "Flip to back", back side visible shows "Flip to front". <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function updateFlipButtons
+ * @param {boolean} isFlipped - whether the calculator is currently showing the back
+ * @author Cesar
+ */
+const updateFlipButtons = (isFlipped) => {
+    if (!flipToggle) return;
+    flipToggle.classList.toggle('is-hidden', isFlipped);
+    flipToggle.setAttribute('aria-pressed', String(isFlipped));
+    if (flipToggleFront) {
+        flipToggleFront.classList.toggle('is-hidden', !isFlipped);
+        flipToggleFront.setAttribute('aria-pressed', String(isFlipped));
+    }
+};
+
+/**
+ * DOCU: Toggles the calculator between its front and its back. <br>
+ * Adds the matching animation class so CSS keyframes perform the physical
+ * 3D turn (rotate to 90deg with a lift, then settle at 180deg), and sets
+ * the final .is-flipped state on animation end. aria-pressed mirrors the
+ * current side for assistive technology. Swaps the visible flip button
+ * ("Flip to back" / "Flip to front") immediately when the flip begins. <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function toggleFlip
+ * @author Cesar
+ */
+const toggleFlip = () => {
+    const goingToBack = !calculatorFlip.classList.contains('is-flipped');
+    /* Block re-entry: mid-animation clicks are ignored. */
+    if (calculatorStage.classList.contains('is-flipping')) return;
+
+    calculatorFlip.classList.toggle('is-flipped', goingToBack);
+
+    /* Swap the visible flip button to match the new side immediately on flip. */
+    updateFlipButtons(goingToBack);
+
+    /* Reduced motion: no animation runs (CSS disables it), so just swap
+       sides instantly and skip the animation bookkeeping entirely. */
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    calculatorStage.classList.add('is-flipping');
+    calculatorFlip.classList.add(goingToBack ? 'is-flipping-to-back' : 'is-flipping-to-front');
+
+    const onSettled = (event) => {
+        if (event.animationName !== 'flip-to-back' && event.animationName !== 'flip-to-front') return;
+        calculatorFlip.classList.remove('is-flipping-to-back', 'is-flipping-to-front');
+        calculatorStage.classList.remove('is-flipping');
+        calculatorFlip.removeEventListener('animationend', onSettled);
+    };
+    calculatorFlip.addEventListener('animationend', onSettled);
+};
+
+flipToggle.addEventListener('click', () => {
+    toggleFlip();
+    flipToggle.blur();
+});
+
+if (flipToggleFront) {
+    flipToggleFront.addEventListener('click', () => {
+        toggleFlip();
+        flipToggleFront.blur();
+    });
+}
 
 /**
 * DOCU: This function is used as a guard for all calculator controls. <br>
@@ -856,6 +930,7 @@ const handleKeyup = (event) => {
 /* Wire the physical keyboard to the calculator. */
 window.addEventListener('keydown', handleKeypress);
 window.addEventListener('keyup', handleKeyup);
+
 
 /* If the window loses focus mid-press, stop any held-key repetition and
    clear any stuck pressed state so nothing keeps firing in the background. */

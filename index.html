@@ -13,9 +13,13 @@
     <!-- Custom CSS loads AFTER Bootstrap so calculator-specific 3D/LCD effects win where needed -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body class="d-flex justify-content-center align-items-center min-vh-100 p-3 p-sm-4">
+<body class="d-flex flex-column justify-content-center align-items-center min-vh-100 p-3 p-sm-4 mt-n4">
     <main class="w-100 d-flex justify-content-center">
-        <div class="calculator-grid">
+        <!-- 3D flip rig: stage supplies perspective, flipper rotates, back face mirrors the casing -->
+        <div class="calculator-stage">
+
+            <div class="calculator-flip">
+                <div class="calculator-grid">
             <div class="output d-flex flex-column justify-content-end text-end overflow-hidden">
                 <button id="power-switch" class="power-switch d-inline-flex p-0 border-0 bg-transparent user-select-none"
                         type="button" role="switch" aria-pressed="false" aria-label="Power switch">
@@ -62,8 +66,57 @@
             <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">.</button>
             <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">0</button>
             <button type="button" id="equals" class="disabled span-two fw-semibold text-center user-select-none" tabindex="-1">=</button>
+                </div>
+
+                <!-- Back cover: same casing language, engraved Apple logo, minimal -->
+                <div class="calculator-back" aria-hidden="true">
+                    <div class="calculator-back-face">
+                        <svg class="apple-logo" viewBox="0 0 384 512" aria-hidden="true" focusable="false">
+                            <!-- Two bites: the classic one baked into the path (right) plus a
+                                 mirrored bite carved out of the left flank via an SVG mask,
+                                 so the engraved drop-shadows follow the carved edges too. -->
+                            <mask id="apple-bites-mask" maskUnits="userSpaceOnUse" x="0" y="0" width="384" height="512">
+                                <rect width="384" height="512" fill="#fff"/>
+                                <circle cx="-28.2" cy="266.7" r="93.6" fill="#000"/>
+                            </mask>
+                            <path fill="currentColor" mask="url(#apple-bites-mask)" d="M318.7 268.7c-.2-36.7 16.4-64.4 50-84.8-18.8-26.9-47.2-41.7-84.7-44.6-35.5-2.7-74.3 20.7-88.5 20.7-15 0-49.4-19.7-76.4-19.7C63.3 141.2 4 184.8 4 273.5q0 39.3 14.4 81.2c12.8 36.7 59 126.7 107.2 125.2 25.2-.6 43-17.9 75.8-17.9 31.8 0 48.3 17.9 76.4 17.9 48.6-.7 90.4-82.5 102.6-119.3-65.2-30.7-61.7-90-61.7-91.9zm-56.6-164.2c27.3-32.4 24.8-61.9 24-72.5-24.1 1.4-52 16.4-67.9 34.9-17.5 19.8-27.8 44.3-25.6 71.9 26.1 2 49.9-11.4 69.5-34.3z"/>
+                        </svg>
+                        <p class="back-fineprint">MADE BY CES &middot; YEAR 2026</p>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
+
+    <!-- Flip controls: two dedicated buttons, one per direction, positioned directly
+         underneath the calculator. Only the relevant one is visible: "Flip to back"
+         when the front is up, "Flip to front" when the back is up. -->
+    <div class="flip-wrap d-flex flex-column align-items-center justify-content-center py-3 gap-2">
+        <button type="button"
+                id="flip-toggle"
+                class="flip-toggle btn d-inline-flex justify-content-center align-items-center gap-2 user-select-none border-0"
+                aria-pressed="false"
+                aria-label="Flip to back">
+            <svg class="flip-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      d="M4 9a8 8 0 0 1 14-2.5M20 15a8 8 0 0 1-14 2.5M18 2v5h-5M6 22v-5h5"/>
+            </svg>
+            <span class="flip-label-text fw-semibold">Flip to back</span>
+            <span class="visually-hidden flip-label">Flip calculator to the back side</span>
+        </button>
+        <button type="button"
+                id="flip-toggle-front"
+                class="flip-toggle btn is-hidden d-inline-flex justify-content-center align-items-center gap-2 user-select-none border-0"
+                aria-pressed="false"
+                aria-label="Flip to front">
+            <svg class="flip-icon" viewBox="0 0 24 24" width="22" height="22" aria-hidden="true" focusable="false">
+                <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                      d="M4 9a8 8 0 0 1 14-2.5M20 15a8 8 0 0 1-14 2.5M18 2v5h-5M6 22v-5h5"/>
+            </svg>
+            <span class="flip-label-text fw-semibold">Flip to front</span>
+            <span class="visually-hidden flip-label">Flip calculator to the front side</span>
+        </button>
+    </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script>
