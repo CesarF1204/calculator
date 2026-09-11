@@ -629,7 +629,10 @@ const performKeyAction = (button) => {
 * DOCU: This single loop wires every calculator key (numbers, operations,
 * equals, AC, DEL and +/-) to the shared action dispatch. It also takes the keys
 * out of the Tab order and releases focus after use, so keyboard navigation
-* can never leave a calculator button visibly focused or selected. <br>
+* can never leave a calculator button visibly focused or selected.
+* Touch/mouse press animation is driven via Pointer Events so a finger tap
+* shows the exact same brighten + label-scale feedback as a desktop click
+* (:active alone is delayed/unreliable on mobile Safari/Chrome). <br>
 * Last Updated Date: September 12, 2026 <br>
 * @function calculatorKeyClickHandler
 * @param {object} button - the clicked calculator key button
@@ -648,6 +651,26 @@ keyButtons.forEach(button => {
         button.textContent = '';
         button.appendChild(label);
     }
+
+    /* Press animation for mouse + touch: pointerdown shows it instantly
+       (no 300ms/mobile :active delay), pointerup/cancel/leave clears it.
+       Disabled (OFF) keys never get the class — pressButton() guards that —
+       so OFF keys stay dimmed with no animation on every device. */
+    button.addEventListener('pointerdown', () => {
+        pressButton(button);
+    });
+    button.addEventListener('pointerup', () => {
+        releaseButton(button);
+    });
+    button.addEventListener('pointercancel', () => {
+        releaseButton(button);
+    });
+    button.addEventListener('pointerleave', () => {
+        releaseButton(button);
+    });
+    button.addEventListener('lostpointercapture', () => {
+        releaseButton(button);
+    });
 
     button.addEventListener('click', () => {
         performKeyAction(button);

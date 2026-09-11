@@ -59,6 +59,8 @@ body {
     /* Touch-friendly interaction */
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
     user-select: none;
     transition: background-color 120ms ease;
 }
@@ -87,8 +89,9 @@ body {
     transition: transform 120ms ease;
 }
 
-/* Scale only the label text when a key is pressed (mouse :active or the
-   JS-driven keyboard state), leaving the button box unchanged. */
+/* Scale only the label text when a key is pressed (mouse/touch :active or
+   the JS-driven pointer/keyboard .is-pressed state), leaving the button
+   box unchanged. */
 .calculator-grid > button:active .key-label,
 .calculator-grid > button.is-pressed .key-label {
     transform: scale(.94);
@@ -332,7 +335,11 @@ body {
     }
 }
 
-/* Disabled calculator keys: stay visible but clearly inactive. */
+/* Disabled calculator keys: stay visible but clearly inactive.
+   NOTE: `cursor: not-allowed` only renders on devices with a real cursor
+   (desktop). Touch phones/tablets have no cursor, so the dimmed
+   background + gray text below IS the mobile equivalent — it must stay
+   in place even while the key is being touched (:active). */
 .calculator-grid > button.disabled {
     cursor: not-allowed;
     background-color: rgba(255, 255, 255, 0.22);
@@ -346,7 +353,20 @@ body {
     }
 }
 
+/* Never brighten / scale a disabled key — on every device, including
+   touch where :active fires while the finger is down. This must come
+   AFTER the generic :active / .is-pressed rules so it wins on
+   specificity + source order. */
 .calculator-grid > button.disabled:active,
+.calculator-grid > button.disabled.is-pressed,
 .calculator-grid > button.disabled:focus {
+    transform: none;
+    background-color: rgba(255, 255, 255, 0.22);
+    color: rgba(160, 160, 160, 0.45);
+    -webkit-text-fill-color: rgba(160, 160, 160, 0.45);
+}
+
+.calculator-grid > button.disabled:active .key-label,
+.calculator-grid > button.disabled.is-pressed .key-label {
     transform: none;
 }
