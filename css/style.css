@@ -45,8 +45,16 @@ body {
     cursor: pointer;
     font-size: clamp(1.5rem, 7vw, 2rem);
     border: 1px solid white;
+    border-radius: 0;
     outline: none;
     background-color: rgba(255, 255, 255, .75);
+    /* iOS Safari otherwise forces its own native button look (blue text,
+       rounded corners, inner shadow/gradient) — reset it so keys render
+       exactly like on desktop Chrome/Edge/Firefox. */
+    -webkit-appearance: none;
+    appearance: none;
+    color: #000;
+    -webkit-text-fill-color: currentColor;
 
     /* Touch-friendly interaction */
     touch-action: manipulation;
@@ -329,6 +337,7 @@ body {
     cursor: not-allowed;
     background-color: rgba(255, 255, 255, 0.22);
     color: rgba(160, 160, 160, 0.45);
+    -webkit-text-fill-color: rgba(160, 160, 160, 0.45);
 }
 
 @media (hover: hover) {
