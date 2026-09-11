@@ -50,7 +50,7 @@ body {
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
     user-select: none;
-    transition: background-color 120ms ease, transform 120ms ease;
+    transition: background-color 120ms ease;
 }
 
 /* Only lift on hover for devices that can actually hover (mouse/trackpad) */
@@ -60,21 +60,44 @@ body {
     }
 }
 
-/* Instant tactile feedback while pressed — key on touchscreens */
+/* Pressed feedback — the key brightens; only its label text scales down a
+   touch for a subtle "gravity" press, while the button box stays put. */
 .calculator-grid > button:active {
     background-color: rgba(255, 255, 255, .95);
-    transform: scale(.98);
 }
 
+.calculator-grid > button.is-pressed {
+    background-color: rgba(255, 255, 255, .95);
+}
+
+/* The key label is its own inline-block so it can be scaled freely without
+   affecting the button's border or size. */
+.calculator-grid > button .key-label {
+    display: inline-block;
+    transition: transform 120ms ease;
+}
+
+/* Scale only the label text when a key is pressed (mouse :active or the
+   JS-driven keyboard state), leaving the button box unchanged. */
+.calculator-grid > button:active .key-label,
+.calculator-grid > button.is-pressed .key-label {
+    transform: scale(.94);
+}
+
+/* Calculator keys are driven entirely by the app, so they never draw a
+   keyboard focus outline; interaction shows the pressed :active state. */
 .calculator-grid > button:focus-visible {
-    outline: 2px solid #fff;
-    outline-offset: 2px;
+    outline: none;
 }
 
 /* Respect users who prefer reduced motion */
 @media (prefers-reduced-motion: reduce) {
     .calculator-grid > button {
         transition: none;
+    }
+    .calculator-grid > button .key-label {
+        transition: none;
+        transform: none;
     }
 }
 

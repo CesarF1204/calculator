@@ -14,6 +14,7 @@ A clean, mobile-first calculator built with plain **HTML, CSS, and JavaScript**.
   - `AC` (all clear) and `DEL` (backspace / delete last digit)
 - **Readable output** — Results are formatted with thousands separators, long values wrap in place (no horizontal scrolling), and pending intermediate values are shown in a smaller secondary display.
 - **Responsive & touch-friendly** — The grid and type scale fluidly across phone, tablet, and desktop.
+- **Full keyboard support** — Every key can be driven from the physical keyboard: digits, operators, `Enter`/`=` for equals, `Backspace` for delete, and `Escape` for all-clear.
 - **Accessibility** — The power switch uses `role="switch"` with `aria-pressed`, the toast uses `aria-live="polite"`, and the UI respects `prefers-reduced-motion`, keyboard focus, and hover-capable devices.
 
 ## How It Works
@@ -63,6 +64,21 @@ If you try to use the calculator while it's off, a toast message will prompt you
 5. Press `=` to see the result in the main display.
 
 You can chain multiple operations (e.g. `12 + 7 + 5`) for intermediate results, use `DEL` to remove the last digit, and use `AC` to start over.
+
+### Using the keyboard
+
+The whole calculator can be driven from a physical keyboard. The keys map as follows:
+
+| Key(s)                    | Calculator action                      |
+| ------------------------- | -------------------------------------- |
+| `0`–`9`                   | Enter a digit                          |
+| `.`                       | Decimal point                          |
+| `+`  `-`  `*`  `/`        | Select the operation                   |
+| `Enter` or `=`            | Equals (`=`)                           |
+| `Backspace`               | Delete last digit (`DEL`)              |
+| `Escape`                  | All clear (`AC`)                       |
+
+The same rules apply as with the mouse: any calculator key pressed while the device is **OFF** shows the "turned off" toast (via `requireOn()`).
 
 ## Project Structure
 
@@ -117,4 +133,5 @@ There is currently **no automated test suite** in the project. To test manually:
 - **Division edge cases** — division by zero currently follows JavaScript semantics and will display `Infinity` (e.g. `5 / 0`). There is no explicit zero-division guard.
 - **Numeric precision** — arithmetic uses standard JavaScript floating-point numbers, so results are subject to normal floating-point precision (e.g. `0.1 + 0.2` may display a long decimal).
 - **Fonts load from CDN** — an internet connection is needed for the Inter font; the UI falls back to a generic sans-serif stack if the font cannot load.
-- **Behavioral scope** — this is a basic four-function calculator; it does not include features such as percentages, square roots, memory, or keyboard input support.
+- **Behavioral scope** — this is a basic four-function calculator; it does not include features such as percentages, square roots, or memory.
+- **Keyboard input** — keyboard support is handled in `js/script.js` via the `handleKeypress()` handler (see the "Using the keyboard" section).

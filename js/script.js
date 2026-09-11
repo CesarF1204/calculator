@@ -440,12 +440,29 @@ const turnOff = () => {
 * @param {object} event - the click event
 * @author Cesar
 */
-powerSwitch.addEventListener('click', () => {
+/**
+ * DOCU: This function toggles the calculator's power state. <br>
+ * It flips the device between its ON and OFF states and is used by
+ * the power-switch click handler. <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function togglePower
+ * @author Cesar
+ */
+const togglePower = () => {
     if (calculatorOn) {
         turnOff();
     } else {
         turnOn();
     }
+};
+
+powerSwitch.addEventListener('click', () => {
+    togglePower();
+    /* Release focus after clicking the switch. Otherwise it stays focused
+       after you click to turn the calculator ON, so the very next keypress can
+       make the browser treat it as keyboard-focused and expose its visible
+       focus outline — exactly the unwanted "switch is focusing" effect. */
+    powerSwitch.blur();
 });
 
 /**
@@ -466,87 +483,246 @@ const requireOn = () => {
 };
 
 /**
-* DOCU: This handler is triggered when a number button is clicked. <br>
-* It checks that the calculator is on, then appends the clicked digit <br>
-* and refreshes the display. <br>
+* DOCU: This is the single action dispatch shared by BOTH mouse clicks and
+* the physical keyboard. It checks that the calculator is on — showing the
+* "turned off" toast when it is OFF — and then performs exactly the same
+* action a mouse click on the button would perform. Keeping one dispatch
+* guarantees keyboard and mouse behaviour are always identical. It returns
+* true when the action ran and false when the calculator is OFF. <br>
 * Last Updated Date: September 12, 2026 <br>
-* @function numberButtonHandler
-* @param {object} button - the clicked number button
+* @function performKeyAction
+* @param {object} button - the calculator key button being pressed
+* @returns {boolean} true when the action ran, false when the calculator is OFF
 * @author Cesar
 */
-numberButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        if (!requireOn()) return;
+const performKeyAction = (button) => {
+    if (!requireOn()) return false;
+    if (button === equalsButton) {
+        calculator.compute();
+    } else if (button === allClear) {
+        calculator.clear();
+    } else if (button === deleteButton) {
+        calculator.remove();
+    } else if (/^[0-9.]$/.test(button.innerText)) {
         calculator.appendNumber(button.innerText);
-        calculator.update();
-    });
-});
-
-/**
-* DOCU: This handler is triggered when an operation button is clicked. <br>
-* It checks that the calculator is on, then selects the operation and <br>
-* refreshes the display. <br>
-* Last Updated Date: September 12, 2026 <br>
-* @function operationButtonHandler
-* @param {object} button - the clicked operation button
-* @author Cesar
-*/
-operationButtons.forEach(button => {
-    button.addEventListener('click', () => {
-        if (!requireOn()) return;
+    } else {
         calculator.chooseOperation(button.innerText);
-        calculator.update();
+    }
+    calculator.update();
+    return true;
+};
+
+/**
+* DOCU: This single loop wires every calculator key (numbers, operations,
+* equals, AC and DEL) to the shared action dispatch. It also takes the keys
+* out of the Tab order and releases focus after use, so keyboard navigation
+* can never leave a calculator button visibly focused or selected. <br>
+* Last Updated Date: September 12, 2026 <br>
+* @function calculatorKeyClickHandler
+* @param {object} button - the clicked calculator key button
+* @author Cesar
+*/
+keyButtons.forEach(button => {
+    /* Pull keys out of the Tab order so Tab never navigates onto a key. */
+    button.setAttribute('tabindex', '-1');
+
+    /* Wrap the label in a <span> so the pressed animation can scale only the
+       text and leave the button box (border/size) completely untouched. */
+    if (!button.querySelector('.key-label')) {
+        const label = document.createElement('span');
+        label.className = 'key-label';
+        label.textContent = button.textContent;
+        button.textContent = '';
+        button.appendChild(label);
+    }
+
+    button.addEventListener('click', () => {
+        performKeyAction(button);
+        /* Don't let the key keep focus after it is activated. */
+        button.blur();
     });
 });
 
-/**
-* DOCU: This handler is triggered when the equals (=) button is clicked. <br>
-* It checks that the calculator is on, computes the result, and refreshes <br>
-* the display. <br>
-* Last Updated Date: September 12, 2026 <br>
-* @function equalsButtonHandler
-* @author Cesar
-*/
-equalsButton.addEventListener('click', () => {
-    if (!requireOn()) return;
-    calculator.compute();
-    calculator.update();
-});
+
+/* ------------------------------------------------------------------
+   Keyboard input — physical keys drive the same actions as clicks.
+   - A mapping from each physical key to its matching calculator button.
+   - An "is-pressed" visual state that mirrors the button :active
+     animation, so a keyboard press reacts exactly like a mouse press.
+   ------------------------------------------------------------------ */
+
+const numberButtonsList = Array.from(numberButtons);
+const operationButtonsList = Array.from(operationButtons);
+const numberButtonByKey = {};
+numberButtonsList.forEach(button => { numberButtonByKey[button.innerText] = button; });
+const operationButtonByKey = {};
+operationButtonsList.forEach(button => { operationButtonByKey[button.innerText] = button; });
+
+/* Resolve a physical key to its matching calculator button, if any
+   (returns undefined for Tab, arrows, F-keys and other non-calculator keys). */
+const keyToButton = (key) => {
+    if (key === 'Escape') return allClear;
+    if (key === 'Backspace' || key === 'Delete') return deleteButton;
+    if (key === 'Enter' || key === '=') return equalsButton;
+    if (/^[0-9.]$/.test(key)) return numberButtonByKey[key];
+    return operationButtonByKey[key];
+};
+
+/* Visual "pressed" feedback, kept in sync with the :active style so the
+   keyboard press looks identical to a mouse press. */
+const pressedButtons = new Set();
+
+const pressButton = (button) => {
+    if (!button || button.classList.contains('disabled')) return;
+    pressedButtons.add(button);
+    button.classList.add('is-pressed');
+};
+
+const releaseButton = (button) => {
+    if (!button || !pressedButtons.delete(button)) return;
+    button.classList.remove('is-pressed');
+};
+
+/* Clear any stuck pressed state (e.g. a key released outside the window). */
+const releaseAllButtons = () => {
+    Array.from(pressedButtons).forEach(releaseButton);
+};
+
+/* ------------------------------------------------------------------
+   Key-hold auto-repeat — keep a held key continuously processing.
+   The very first keypress runs the action instantly, then after a short
+   delay a controlled timer repeats the action until the key is released,
+   just like pressing and holding a physical calculator button.
+   ------------------------------------------------------------------ */
+
+const KEY_REPEAT_DELAY = 500;    /* wait before repetition begins, ms     */
+const KEY_REPEAT_INTERVAL = 90;  /* delay between each repeated action, ms */
+
+let heldButton = null;       /* calculator button whose key is currently held */
+let repeatDelayTimer = null; /* timeout id waiting before repeats begin      */
+let repeatTimer = null;      /* interval id driving the held-key repeats     */
+
+/* Stop any in-progress held-key repetition. */
+const stopKeyRepeat = () => {
+    if (repeatDelayTimer) {
+        clearTimeout(repeatDelayTimer);
+        repeatDelayTimer = null;
+    }
+    if (repeatTimer) {
+        clearInterval(repeatTimer);
+        repeatTimer = null;
+    }
+    heldButton = null;
+};
+
+/* Start repeating a held button. Only called after the first action has run,
+   so the repeat timer never fires for a calculator that is OFF. */
+const startKeyRepeat = (button) => {
+    stopKeyRepeat();
+    heldButton = button;
+    repeatDelayTimer = setTimeout(() => {
+        repeatDelayTimer = null;
+        repeatTimer = setInterval(() => {
+            /* Repeat only while the same button is still held. */
+            if (heldButton) {
+                performKeyAction(heldButton);
+            } else {
+                stopKeyRepeat();
+            }
+        }, KEY_REPEAT_INTERVAL);
+    }, KEY_REPEAT_DELAY);
+};
+
+/* Restore the visual state and stop repetition when a held key is released. */
+const onKeyRelease = (button) => {
+    if (!button) return;
+    if (button === heldButton) stopKeyRepeat();
+    releaseButton(button);
+};
 
 /**
-* DOCU: This handler is triggered when the all-clear (AC) button is clicked. <br>
-* It checks that the calculator is on, resets everything, and refreshes <br>
-* the display. <br>
-* Last Updated Date: September 12, 2026 <br>
-* @function allClearHandler
-* @author Cesar
-*/
-allClear.addEventListener('click', () => {
-    if (!requireOn()) return;
-    calculator.clear();
-    calculator.update();
-});
+ * DOCU: This handler maps physical keyboard keys to calculator actions. <br>
+ * It reuses the exact same action dispatch and requireOn() guard as the
+ * buttons, so keyboard and mouse behave identically — including showing the
+ * "turned off" toast when the calculator is OFF. Non-calculator and modifier
+ * keys are left untouched, and Tab/arrow keys never select a calculator key.
+ * Holding a calculator key keeps it visually pressed and continuously invokes
+ * its action (auto-repeat) until the key is released; the browser's native
+ * keydown repeats are ignored in favour of a controlled repeat timer, so a
+ * held key can never cause duplicate or excessive input. <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function handleKeypress
+ * @param {object} event - the keydown event
+ * @author Cesar
+ */
+const handleKeypress = (event) => {
+    /* Ctrl/Alt/Meta may be reserved by the browser/system, so never let a
+       modified combination drive a calculator key. */
+    if (event.ctrlKey || event.altKey || event.metaKey) return;
+
+    const key = event.key;
+
+    /* If one of our controls currently owns focus, let Enter/Space activate it
+       natively instead of also firing a calculator action — this avoids a
+       double trigger. The keys themselves are kept out of the Tab order. */
+    const onCalculatorControl = event.target === powerSwitch || keyButtons.includes(event.target);
+    if (onCalculatorControl && (key === 'Enter' || key === ' ')) return;
+
+    const button = keyToButton(key);
+    if (!button) return;          /* Tab, arrows, F-keys, etc. are left alone */
+
+    event.preventDefault();
+
+    /* The browser re-fires keydown while a key is held. Those repeats are
+       ignored: the first press already ran the action and the repeat timer
+       below drives continuous input, so duplicates never add unexpected
+       calculations. */
+    if (event.repeat || event.repeatCount > 0) return;
+
+    /* First press of a (possibly new) key. If another key is still held, let
+       the newest one take over so only one key is continuously processed. */
+    if (heldButton && heldButton !== button) {
+        releaseButton(heldButton);
+    }
+    pressButton(button);
+    if (performKeyAction(button)) {
+        /* The calculator is on: keep repeating while the key stays held. */
+        startKeyRepeat(button);
+    }
+    /* When OFF, performKeyAction showed the "turned off" toast and returned
+       false, so nothing is calculated and no repetition is started. */
+};
 
 /**
-* DOCU: This handler is triggered when the delete (DEL) button is clicked. <br>
-* It checks that the calculator is on, removes the last digit, and <br>
-* refreshes the display. <br>
-* Last Updated Date: September 12, 2026 <br>
-* @function deleteButtonHandler
-* @author Cesar
-*/
-deleteButton.addEventListener('click', () => {
-    if (!requireOn()) return;
-    calculator.remove();
-    calculator.update();
-});
+ * DOCU: This handler fires when a key is lifted. It cleanly stops any held-key
+ * repetition for that button and restores its normal (unpressed) visual state,
+ * so continuous input ends immediately on release. <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function handleKeyup
+ * @param {object} event - the keyup event
+ * @author Cesar
+ */
+const handleKeyup = (event) => {
+    if (event.repeat || event.repeatCount > 0) return;
+    onKeyRelease(keyToButton(event.key));
+};
 
+/* Wire the physical keyboard to the calculator. */
+window.addEventListener('keydown', handleKeypress);
+window.addEventListener('keyup', handleKeyup);
+
+/* If the window loses focus mid-press, stop any held-key repetition and
+   clear any stuck pressed state so nothing keeps firing in the background. */
+window.addEventListener('blur', () => {
+    stopKeyRepeat();
+    releaseAllButtons();
+});
 /**
-* DOCU: This call sets the default state of the calculator to OFF. <br>
-* The calculator starts turned OFF, so the power switch is off and all <br>
-* keys are disabled until the user turns it on. <br>
-* Last Updated Date: September 12, 2026 <br>
-* @function initializeCalculator
-* @author Cesar
-*/
+ * DOCU: This call sets the default state of the calculator to OFF. <br>
+ * The calculator starts turned OFF, so the power switch is off and all <br>
+ * keys are disabled until the user turns it on. <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function initializeCalculator
+ * @author Cesar
+ */
 turnOff();
