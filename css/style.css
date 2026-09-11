@@ -1,85 +1,135 @@
 /* =====================================================================
-   Simple Calculator — mobile-first, fully responsive styling
-   Fluid grid tracks + fluid type mean the pad scales across phone,
-   tablet and desktop without ever overflowing horizontally.
+   Simple Calculator — Bootstrap-first + physical handheld casing
+   Bootstrap 5 (via CDN in index.html) is the DEFAULT for: page
+   centering, spacing, flex, sizing, text, borders, radius, shadows,
+   font weights. Custom CSS below covers ONLY what Bootstrap cannot:
+   3D casing/bevels, recessed LCD, layered key gradients + travel,
+   power-switch mechanics, calc-toast countdown visuals,
+   shrink-to-fit display helpers.
+   Functional hooks (.calculator-grid, .output, operands,
+   .power-switch, #toast.calc-toast, .disabled, .span-two,
+   .key-label, .is-pressed, .show, .on, .no-transition) unchanged
+   so js/script.js works untouched.
    ===================================================================== */
 
-*,
-*::before,
-*::after {
-    box-sizing: border-box;
-    font-family: 'Chakra Petch', 'Inter', sans-serif;
-}
-
-html,
+/* Calculator typeface + stage backdrop (no Bootstrap equivalent). */
 body {
-    /* Belt-and-braces: never allow sideways scrolling on narrow screens */
-    overflow-x: hidden;
-}
-
-body {
-    padding: 0;
-    margin: 0;
-    background-image: linear-gradient(283deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 30%,rgba(130, 130, 130,0.04) 30%, rgba(130, 130, 130,0.04) 49%,rgba(31, 31, 31,0.04) 49%, rgba(31, 31, 31,0.04) 100%),linear-gradient(297deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 20%,rgba(130, 130, 130,0.04) 20%, rgba(130, 130, 130,0.04) 60%,rgba(31, 31, 31,0.04) 60%, rgba(31, 31, 31,0.04) 100%),linear-gradient(242deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 29%,rgba(130, 130, 130,0.04) 29%, rgba(130, 130, 130,0.04) 48%,rgba(31, 31, 31,0.04) 48%, rgba(31, 31, 31,0.04) 100%),linear-gradient(90deg, rgb(0,0,0),rgb(0,0,0));
+    font-family: 'Chakra Petch', 'Inter', var(--bs-body-font-family, sans-serif);
+    color-scheme: dark;
+    min-height: 100dvh; /* enhancement over Bootstrap min-vh-100 (100vh) */
+    background-image: 
+    linear-gradient(283deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 30%,rgba(130, 130, 130,0.04) 30%, rgba(130, 130, 130,0.04) 49%,rgba(31, 31, 31,0.04) 49%, rgba(31, 31, 31,0.04) 100%),
+    linear-gradient(297deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 20%,rgba(130, 130, 130,0.04) 20%, rgba(130, 130, 130,0.04) 60%,rgba(31, 31, 31,0.04) 60%, rgba(31, 31, 31,0.04) 100%),
+    linear-gradient(242deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 29%,rgba(130, 130, 130,0.04) 29%, rgba(130, 130, 130,0.04) 48%,rgba(31, 31, 31,0.04) 48%, rgba(31, 31, 31,0.04) 100%),
+    linear-gradient(90deg, rgb(0,0,0),rgb(0,0,0));
 }
 
 .calculator-grid {
-    /* Each of the 4 columns is at most 110px on large screens (matching the
-       original fixed width) but shrinks to a fluid 25% on narrow viewports,
-       so the pad always fits the width with no horizontal scroll. */
-    --col: min(110px, 25%);
-    /* Rows take whatever vertical space is available (5 button rows below the
-       output), with a comfortable minimum tap height of ~52px. */
-    --row: max(3.25rem, min(5.5rem, calc((100vh - 9rem) / 5)));
-
+    /* Bootstrap has no 4x5 keypad grid: custom grid stays (rows/cols/gaps). */
+    --row: clamp(3.1rem, 15.5vw, 4.2rem);
+    --radius-body: 26px;
+    --radius-key: 13px;
+    --radius-display: 15px;
+    position: relative;
+    width: min(400px, 100%);
     display: grid;
-    place-content: center;
-    min-height: 100vh;
-    grid-template-columns: repeat(4, var(--col));
-    /* The top (display) row is a fixed height so the display never grows,
-       shifts, or reflows when a long number is entered. */
-    grid-template-rows: 9rem repeat(5, var(--row));
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-rows: clamp(7.75rem, 30vw, 9rem) repeat(5, var(--row));
+    gap: clamp(8px, 2.4vw, 11px);
+    padding: clamp(15px, 4vw, 22px);
+    padding-top: clamp(30px, 7vw, 38px);
+    /* Casing material: layered bevels + depth Bootstrap shadows can't do. */
+    border: 1px solid #0b0d11;
+    border-radius: var(--radius-body);
+    outline: 1px solid rgba(255,255,255,.07);
+    outline-offset: -2px;
+    background:
+        linear-gradient(90deg, rgba(255,255,255,.07) 0%, rgba(255,255,255,0) 14%),
+        linear-gradient(270deg, rgba(0,0,0,.28) 0%, rgba(0,0,0,0) 16%),
+        linear-gradient(168deg, #434b59 0%, #2e3440 22%, #23282f 58%, #191d24 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.32),
+        inset 0 -2px 0 rgba(0,0,0,.45),
+        inset 2px 0 0 rgba(255,255,255,.05),
+        inset -2px 0 0 rgba(0,0,0,.25),
+        0 1px 0 rgba(255,255,255,.06),
+        0 24px 48px rgba(0,0,0,.55),
+        0 6px 16px rgba(0,0,0,.5);
+}
+
+/* Inner faceplate: recessed border inside the shell (pure decoration). */
+.calculator-grid::before {
+    content: "";
+    position: absolute;
+    z-index: 0;
+    inset: 8px;
+    border-radius: calc(var(--radius-body) - 8px);
+    border: 1px solid rgba(255,255,255,.06);
+    box-shadow: inset 0 1px 6px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.08);
+    background: linear-gradient(180deg, rgba(0,0,0,.14), rgba(0,0,0,0) 30%);
+    pointer-events: none;
+}
+
+/* Brand strip etched on the crown (pure decoration). */
+.calculator-grid::after {
+    content: "CALCULATOR PRO MAX";
+    position: absolute;
+    top: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: .56rem;
+    font-weight: 600;
+    letter-spacing: .28em;
+    text-indent: .28em;
+    white-space: nowrap;
+    color: rgba(255,255,255,.38);
+    text-shadow: 0 1px 0 rgba(0,0,0,.6);
+    pointer-events: none;
 }
 
 .calculator-grid > button {
-    cursor: pointer;
-    font-size: clamp(1.5rem, 7vw, 2rem);
-    border: 1px solid white;
-    border-radius: 0;
-    outline: none;
-    background-color: rgba(255, 255, 255, .75);
-    /* iOS Safari otherwise forces its own native button look (blue text,
-       rounded corners, inner shadow/gradient) — reset it so keys render
-       exactly like on desktop Chrome/Edge/Firefox. */
-    -webkit-appearance: none;
-    appearance: none;
-    color: #000;
+    /* Bootstrap gives weight/select via utilities; custom keeps the 3D key.
+       Bootstrap .btn is NOT used: it would fight the fixed key grid with its
+       own padding/line-height/focus-ring. border-width stays custom so the
+       3px press "ledge" keeps exact proportions. */
+    position: relative;
+    z-index: 1;
+    border: 1px solid;
+    border-color: rgba(8,10,14,.55);
+    border-radius: var(--radius-key);
+    font-size: clamp(1.25rem, 6vw, 1.65rem);
+    color: #1d2129;
     -webkit-text-fill-color: currentColor;
-
-    /* Touch-friendly interaction */
+    background: linear-gradient(180deg, #ffffff 0%, #eceef1 52%, #d3d6dc 100%);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.95),
+        inset 0 -1px 0 rgba(0,0,0,.08),
+        0 3px 0 rgba(9,11,15,.9),
+        0 7px 12px rgba(0,0,0,.35);
+    appearance: none;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    transition: background-color 120ms ease;
+    transform: translateY(0);
+    transition: transform 80ms ease, box-shadow 120ms ease, filter 120ms ease;
 }
 
 /* Only lift on hover for devices that can actually hover (mouse/trackpad) */
 @media (hover: hover) {
     .calculator-grid > button:hover {
-        background-color: rgba(255, 255, 255, .90);
+        filter: brightness(1.045);
     }
 }
 
-/* Pressed feedback — the key brightens; only its label text scales down a
-   touch for a subtle "gravity" press, while the button box stays put. */
-.calculator-grid > button:active {
-    background-color: rgba(255, 255, 255, .95);
-}
-
+/* Pressed: the whole key travels down like real plastic. */
+.calculator-grid > button:active,
 .calculator-grid > button.is-pressed {
-    background-color: rgba(255, 255, 255, .95);
+    transform: translateY(2px);
+    box-shadow:
+        inset 0 1px 3px rgba(0,0,0,.22),
+        inset 0 -1px 0 rgba(0,0,0,.06),
+        0 1px 0 rgba(9,11,15,.9),
+        0 3px 6px rgba(0,0,0,.35);
+    filter: brightness(.985);
 }
 
 /* The key label is its own inline-block so it can be scaled freely without
@@ -94,74 +144,118 @@ body {
    box unchanged. */
 .calculator-grid > button:active .key-label,
 .calculator-grid > button.is-pressed .key-label {
-    transform: scale(.94);
+    transform: scale(.93);
 }
 
-/* Calculator keys are driven entirely by the app, so they never draw a
-   keyboard focus outline; interaction shows the pressed :active state. */
+/* Calculator keys are app-driven; press feedback only (no focus ring). */
 .calculator-grid > button:focus-visible {
     outline: none;
 }
 
-/* Respect users who prefer reduced motion */
-@media (prefers-reduced-motion: reduce) {
-    .calculator-grid > button {
-        transition: none;
-    }
-    .calculator-grid > button .key-label {
-        transition: none;
-        transform: none;
-    }
-    /* No font-size animation for the operands; the number still scales in a
-       single step to fit the fixed display, just without the smooth ease. */
-    .output .previous-operand,
-    .output .current-operand {
-        transition: none;
-    }
+/* Key families: graphite utilities, slate operators, amber equals.
+   Weight/select/centering now come from Bootstrap utilities
+   (fw-semibold text-center user-select-none) in the HTML. */
+.calculator-grid > button:is(#all-clear, #delete, #toggle-sign) {
+    color: #f2f4f7;
+    -webkit-text-fill-color: currentColor;
+    font-size: clamp(1.05rem, 5vw, 1.35rem);
+    background: linear-gradient(180deg, #626c7f 0%, #4a5262 55%, #383f4d 100%);
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
 }
 
+.calculator-grid > button#operation {
+    color: #f2f4f7;
+    -webkit-text-fill-color: currentColor;
+    background: linear-gradient(180deg, #565f73 0%, #3d4454 60%, #2f3542 100%);
+    text-shadow: 0 1px 2px rgba(0,0,0,.5);
+}
+
+.calculator-grid > button#equals {
+    color: #fff;
+    -webkit-text-fill-color: currentColor;
+    border-color: rgba(80,38,4,.65);
+    background: linear-gradient(180deg, #ffa14d 0%, #f0821a 55%, #d46906 100%);
+    text-shadow: 0 1px 2px rgba(90,42,0,.55);
+    box-shadow:
+        inset 0 1px 0 rgba(255,255,255,.55),
+        inset 0 -1px 0 rgba(0,0,0,.14),
+        0 3px 0 rgba(74,34,2,.9),
+        0 7px 12px rgba(0,0,0,.35);
+}
+
+.calculator-grid > button#equals:active,
+.calculator-grid > button#equals.is-pressed {
+    box-shadow:
+        inset 0 1px 3px rgba(90,42,0,.4),
+        0 1px 0 rgba(74,34,2,.9),
+        0 3px 6px rgba(0,0,0,.35);
+}
+
+/* Respect users who prefer reduced motion: merge into one block. */
+@media (prefers-reduced-motion: reduce) {
+    .calculator-grid > button,
+    .calculator-grid > button .key-label,
+    .output .previous-operand,
+    .output .current-operand { transition: none; }
+    .calculator-grid > button .key-label { transform: none; }
+    /* No font-size animation for operands; number still scales in one step. */
+}
+
+/* grid-column span has no Bootstrap equivalent — keep. */
 .span-two {
     grid-column: span 2;
 }
 
 .output {
+    /* Flex/align/text/overflow via Bootstrap utilities in HTML;
+       custom keeps grid span, fixed padding, recessed-LCD material. */
     grid-column: 1 / -1;
     position: relative;
-    background-color: rgba(0, 0, 0, .75);
-    border: 1px solid white;
-    display: flex;
-    align-items: flex-end;
-    justify-content: flex-end;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 1rem 1.25rem;
-    /* The display is a fixed, single-line panel: it must never wrap, expand,
-       or shift. Long numbers are scaled down (see JS fitOperandToDisplay) to
-       stay on one line, and overflow is clipped purely as a safety net. */
-    overflow: hidden;
+    z-index: 1;
+    padding: 1.9rem 1.1rem 0.85rem;
+    border: 1px solid #070908;
+    border-radius: var(--radius-display);
+    background: linear-gradient(180deg, #0d120f 0%, #161e1a 55%, #101613 100%);
+    box-shadow:
+        inset 0 4px 12px rgba(0,0,0,.85),
+        inset 0 1px 3px rgba(0,0,0,.9),
+        inset 0 -1px 0 rgba(255,255,255,.06),
+        0 1px 0 rgba(255,255,255,.16);
+}
+
+/* LCD glass sheen (decoration only, never intercepts taps) */
+.output::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: linear-gradient(180deg, rgba(255,255,255,.075) 0%, rgba(255,255,255,.015) 26%, rgba(255,255,255,0) 42%);
+    pointer-events: none;
+}
+
+.output .previous-operand,
+.output .current-operand {
+    /* Align/nowrap/overflow/width/weight via Bootstrap utilities in HTML;
+       custom keeps LCD tint + fixed single-line sizing for JS fit. */
+    font-variant-numeric: tabular-nums;
+    line-height: 1.25;
+    min-height: 1.25em;
+    transition: font-size 110ms ease;
 }
 
 .output .previous-operand {
-    color: rgba(255, 255, 255, .75);
-    font-size: clamp(1.1rem, 4.5vw, 1.5rem);
-    /* Both operands are locked to one line, right-aligned and filling the
-       panel; JS shrinks the font so the full value always fits. */
-    white-space: nowrap;
-    overflow: hidden;
-    width: 100%;
-    text-align: right;
-    transition: font-size 110ms ease;
+    color: rgba(214,230,218,.62);
+    font-size: clamp(1rem, 4.2vw, 1.3rem);
+    letter-spacing: .02em;
+    text-shadow: 0 0 10px rgba(140,255,170,.08);
 }
 
 .output .current-operand {
-    color: white;
-    font-size: clamp(2rem, 8vw, 2.5rem);
-    min-height: 1.25em;
-    white-space: nowrap;
-    overflow: hidden;
-    width: 100%;
-    text-align: right;
-    transition: font-size 110ms ease;
+    color: #f2f7f3;
+    font-size: clamp(1.9rem, 7.5vw, 2.4rem);
+    letter-spacing: .01em;
+    line-height: 1.2;
+    text-shadow: 0 0 14px rgba(150,255,180,.12);
 }
 
 /* Used by JS while measuring text so active font transitions never skew the
@@ -176,147 +270,125 @@ body {
    ON/OFF power switch (upper-left) + toast message + disabled state
    ===================================================================== */
 
-/* The switch lives inside the output panel, pinned to its top-left. */
+/* Power switch: flex/padding/border/bg/select/rounding via Bootstrap.
+   Custom keeps absolute pin, track/knob material + slide mechanics. */
 .power-switch {
     position: absolute;
-    top: 0.4rem;
-    left: 0.4rem;
-    display: inline-flex;
-    align-items: center;
-    padding: 0;
-    border: none;
-    background: transparent;
+    top: 0.55rem;
+    left: 0.7rem;
+    z-index: 2;
     cursor: pointer;
     outline: none;
     touch-action: manipulation;
     -webkit-tap-highlight-color: transparent;
-    user-select: none;
-}
-
-.power-switch:focus-visible {
-    outline: 2px solid #fff;
-    outline-offset: 2px;
 }
 
 .power-switch-track {
     position: relative;
-    width: 4rem;
-    height: 1.8rem;
-    border-radius: 999px;
-    background-color: #565d6b;        /* OFF = slate gray */
+    width: 3.7rem;
+    height: 1.55rem;
+    background: linear-gradient(180deg, #4a505c 0%, #5a6272 100%);
+    border: 1px solid rgba(0,0,0,.6);
+    box-shadow:
+        inset 0 2px 4px rgba(0,0,0,.5),
+        inset 0 -1px 0 rgba(255,255,255,.1),
+        0 1px 0 rgba(255,255,255,.12);
     transition: background-color 200ms ease;
 }
 
-/* Current state text, printed inside the switch (always visible). */
+/* Printed ON/OFF text inside the switch (always visible). */
 .power-switch-label {
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    font-size: 0.68rem;
-    font-weight: 700;
+    font-size: 0.62rem;
     color: #fff;
-    letter-spacing: 0.03rem;
+    letter-spacing: 0.04em;
+    text-shadow: 0 1px 1px rgba(0,0,0,.5);
 }
 
 .power-switch-knob {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 1.8rem;
-    height: 1.8rem;
-    border-radius: 50%;
-    background-color: #fff;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    top: 50%;
+    left: 2px;
+    transform: translateY(-50%);
+    width: 1.28rem;
+    height: 1.28rem;
+    background: radial-gradient(circle at 35% 30%, #fff 0%, #dfe3e8 55%, #b9bec7 100%);
+    border: 1px solid rgba(0,0,0,.45);
+    box-shadow: 0 1px 3px rgba(0,0,0,.5), inset 0 1px 0 rgba(255,255,255,.9);
     transition: transform 200ms ease;
 }
 
 /* OFF (default): knob on the left, label centered in the open space on the
    right, with clearance from both the knob and the switch's right border. */
 .power-switch .power-switch-label {
-    left: 2.2rem;
+    left: 2rem;
 }
 
-/* ON: green track, knob slides to the right, label switches to the left. */
 .power-switch.on .power-switch-knob {
-    transform: translateX(2.2rem);
+    transform: translateY(-50%) translateX(2.02rem);
 }
 
 .power-switch.on .power-switch-label {
-    left: 0.78rem;
+    left: 0.62rem;
 }
 
 .power-switch.on .power-switch-track {
-    background-color: #4ABB3F;        /* ON = green */
+    background: linear-gradient(180deg, #3d9c34 0%, #55c24a 100%);
 }
 
-/* Toast message shown when a disabled key is pressed while OFF. It is styled
-   as a compact notification card with an icon, a message and a countdown
-   progress bar so users know how long it will stay visible. */
-.toast {
-    position: absolute;
-    top: 2.9rem;
+/* OFF notice: position/flex/gap/border/radius/shadow/weight via Bootstrap.
+   .calc-toast name avoids Bootstrap's own .toast. Custom keeps offsets,
+   colors, countdown bar and show/hide mechanics. */
+.calc-toast {
+    top: 2.6rem;
     left: 50%;
+    z-index: 3;
     max-width: calc(100% - 1rem);
-    display: flex;
-    align-items: center;
-    gap: 0.55rem;
     padding: 0.55rem 0.8rem 0.65rem;   /* extra bottom room for the progress bar */
     background-color: rgba(22, 22, 28, 0.95);
     color: #fff;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 10px;
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    border-color: rgba(255, 255, 255, 0.16);
     font-size: clamp(0.72rem, 2.6vw, 0.85rem);
-    font-weight: 500;
-    text-align: left;
-    /* Hidden by default: invisible and ignores pointers. */
     opacity: 0;
     visibility: hidden;
     pointer-events: none;
-    /* Slide up + fade in, slide down + fade out. The visibility delay keeps
-       the element visible/pointer-interactive only while it is shown. */
     transform: translateX(-50%) translateY(10px);
     transition: opacity 220ms ease, transform 220ms ease, visibility 220ms;
 }
 
-/* Warning icon (a bold "!") */
+/* Warning icon (a bold "!"): flex/rounding/weight via Bootstrap in HTML. */
 .toast-icon {
-    display: inline-grid;
-    place-items: center;
     flex: 0 0 auto;
     width: 1.15rem;
     height: 1.15rem;
-    border-radius: 50%;
     background-color: rgba(240, 169, 59, 0.18);
     color: #f0a93b;
     font-size: 0.7rem;
-    font-weight: 800;
-    line-height: 1;
 }
 
 /* Message text: renders exactly the two lines given in the string (only the
    "\n" creates a break — no automatic word wrapping) and is centered. */
 .toast-message {
-    flex: 1 1 auto;
     white-space: pre;
-    text-align: center;
 }
 
-/* Countdown progress bar pinned to the bottom of the toast. Its width is
-   driven from JavaScript so it pauses whenever the toast is hovered. */
+/* Countdown progress bar pinned to the bottom of the toast. Width is driven
+   per-frame from JS (100% -> 0%); kept in custom CSS (not Bootstrap w-100)
+   so the JS width is never overridden. overflow-hidden on the toast clips
+   the bar to the rounded corners. */
 .toast-progress {
-    position: absolute;
-    left: 0;
-    bottom: 0;
     height: 0.25rem;
     width: 100%;
-    border-radius: 3px;
+    max-width: 100%;
     background-color: rgba(240, 169, 59, 0.9);
+    border-radius: 0 0 0.4rem 0.4rem;
     pointer-events: none;
 }
 
 /* Visible state: fully opaque, allows pointer interaction. */
-.toast.show {
+.calc-toast.show {
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
@@ -325,48 +397,71 @@ body {
 
 /* Respect users who prefer reduced motion: no slide, just appear/disappear. */
 @media (prefers-reduced-motion: reduce) {
-    .toast {
+    .calc-toast {
         transition: opacity 100ms ease, visibility 100ms;
         transform: translateX(-50%);
     }
 
-    .toast.show {
+    .calc-toast.show {
         transform: translateX(-50%);
     }
 }
 
-/* Disabled calculator keys: stay visible but clearly inactive.
-   NOTE: `cursor: not-allowed` only renders on devices with a real cursor
-   (desktop). Touch phones/tablets have no cursor, so the dimmed
-   background + gray text below IS the mobile equivalent — it must stay
-   in place even while the key is being touched (:active). */
-.calculator-grid > button.disabled {
+/* Disabled (OFF) keys: dimmed + inactive. :is() collapses the old per-ID
+   duplication while keeping ID-level specificity so family colors
+   (e.g. button#equals) can't leak through. Touch devices have no cursor,
+   so the dimmed background + gray text IS the mobile OFF signal. */
+.calculator-grid > button:is(.disabled),
+.calculator-grid > button:is(#all-clear, #delete, #toggle-sign, #operation, #number, #equals).disabled {
     cursor: not-allowed;
-    background-color: rgba(255, 255, 255, 0.22);
-    color: rgba(160, 160, 160, 0.45);
-    -webkit-text-fill-color: rgba(160, 160, 160, 0.45);
+    color: rgba(225,228,233,.4);
+    -webkit-text-fill-color: rgba(225,228,233,.4);
+    text-shadow: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.05) 100%);
+    border-color: rgba(0,0,0,.4);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 0 rgba(0,0,0,.35);
+    transform: none;
+    filter: none;
 }
 
 @media (hover: hover) {
-    .calculator-grid > button.disabled:hover {
-        background-color: rgba(255, 255, 255, 0.22);
+    .calculator-grid > button.disabled:hover,
+    .calculator-grid > button:is(#all-clear, #delete, #toggle-sign, #operation, #number, #equals).disabled:hover {
+        filter: none;
     }
 }
 
-/* Never brighten / scale a disabled key — on every device, including
-   touch where :active fires while the finger is down. This must come
-   AFTER the generic :active / .is-pressed rules so it wins on
-   specificity + source order. */
-.calculator-grid > button.disabled:active,
-.calculator-grid > button.disabled.is-pressed,
-.calculator-grid > button.disabled:focus {
+/* Never brighten/scale a disabled key — after :active rules so it wins. */
+.calculator-grid > button.disabled:is(:active, .is-pressed, :focus),
+.calculator-grid > button:is(#all-clear, #delete, #toggle-sign, #operation, #number, #equals).disabled:is(:active, .is-pressed, :focus) {
     transform: none;
-    background-color: rgba(255, 255, 255, 0.22);
-    color: rgba(160, 160, 160, 0.45);
-    -webkit-text-fill-color: rgba(160, 160, 160, 0.45);
+    color: rgba(225,228,233,.4);
+    -webkit-text-fill-color: rgba(225,228,233,.4);
+    text-shadow: none;
+    background: linear-gradient(180deg, rgba(255,255,255,.1) 0%, rgba(255,255,255,.05) 100%);
+    border-color: rgba(0,0,0,.4);
+    box-shadow: inset 0 1px 0 rgba(255,255,255,.06), 0 2px 0 rgba(0,0,0,.35);
+    filter: none;
 }
 
-.calculator-grid > button.disabled:active .key-label,
-.calculator-grid > button.disabled.is-pressed .key-label {
+.calculator-grid > button.disabled:is(:active, .is-pressed) .key-label,
+.calculator-grid > button:is(#all-clear, #delete, #toggle-sign, #operation, #number, #equals).disabled:is(:active, .is-pressed) .key-label {
     transform: none;
+}
+
+/* Responsive tuning — proportions stay intact, nothing distorts. */
+@media (max-width: 430px) {
+    .calculator-grid {
+        --radius-body: 21px;
+        --radius-key: 11px;
+        gap: 8px;
+    }
+    .output { padding: 1.7rem 0.9rem 0.75rem; }
+}
+
+@media (max-height: 640px) {
+    .calculator-grid {
+        --row: max(2.85rem, min(3.9rem, calc((100dvh - 15.5rem) / 5)));
+        grid-template-rows: clamp(6.5rem, 22dvh, 8rem) repeat(5, var(--row));
+    }
 }

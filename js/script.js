@@ -392,7 +392,12 @@ const keyButtons = [
 */
 const updateToastProgress = () => {
     const now = performance.now();
-    toastElapsed = Math.min(TOAST_DURATION, toastElapsed + (now - toastStart));
+    /* Clamp the frame delta: rAF stops while the tab is suspended, so the
+       first frame back would otherwise apply the whole suspension at once
+       and the toast would vanish in a single frame. Clamping keeps the
+       countdown resuming smoothly from where it visually was. */
+    const delta = Math.min(now - toastStart, 250);
+    toastElapsed = Math.min(TOAST_DURATION, toastElapsed + delta);
     toastStart = now;
     const remaining = Math.max(0, TOAST_DURATION - toastElapsed);
     toastProgress.style.width = `${(remaining / TOAST_DURATION) * 100}%`;

@@ -7,51 +7,57 @@
     <link rel="icon" type="image/x-icon" href="images/logo.png">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5: default styling solution for layout, spacing, flex, type, borders, shadows -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Custom CSS loads AFTER Bootstrap so calculator-specific 3D/LCD effects win where needed -->
     <link rel="stylesheet" href="css/style.css">
 </head>
-<body>
-    <div class="calculator-grid">
-        <div class="output">
-            <button id="power-switch" class="power-switch"
-                    type="button" role="switch" aria-pressed="false" aria-label="Power switch">
-                <span class="power-switch-track">
-                    <span class="power-switch-label" id="power-switch-label">OFF</span>
-                    <span class="power-switch-knob"></span>
-                </span>
-            </button>
+<body class="d-flex justify-content-center align-items-center min-vh-100 p-3 p-sm-4">
+    <main class="w-100 d-flex justify-content-center">
+        <div class="calculator-grid">
+            <div class="output d-flex flex-column justify-content-end text-end overflow-hidden">
+                <button id="power-switch" class="power-switch d-inline-flex p-0 border-0 bg-transparent user-select-none"
+                        type="button" role="switch" aria-pressed="false" aria-label="Power switch">
+                    <span class="power-switch-track rounded-pill d-inline-flex align-items-center">
+                        <span class="power-switch-label fw-semibold user-select-none" id="power-switch-label">OFF</span>
+                        <span class="power-switch-knob rounded-circle d-inline-block"></span>
+                    </span>
+                </button>
 
-            <div id="previous-operand" class="previous-operand"></div>
-            <div id="current-operand" class="current-operand"></div>
+                <div id="previous-operand" class="previous-operand text-end text-nowrap overflow-hidden w-100 fw-medium"></div>
+                <div id="current-operand" class="current-operand text-end text-nowrap overflow-hidden w-100 fw-semibold"></div>
 
-            <div id="toast" class="toast" role="status" aria-live="polite">
-                <span class="toast-icon" aria-hidden="true">!</span>
-                <span id="toast-message" class="toast-message"></span>
-                <span class="toast-progress" aria-hidden="true"></span>
+                <div id="toast" class="calc-toast position-absolute d-flex align-items-center gap-2 border rounded-3 shadow fw-medium overflow-hidden" role="status" aria-live="polite">
+                    <span class="toast-icon d-inline-flex justify-content-center align-items-center rounded-circle fw-bold" aria-hidden="true">!</span>
+                    <span id="toast-message" class="toast-message text-center"></span>
+                    <span class="toast-progress position-absolute start-0 bottom-0" aria-hidden="true"></span>
+                </div>
             </div>
+
+            <button type="button" id="all-clear" class="disabled fw-semibold text-center user-select-none" tabindex="-1">AC</button>
+            <button type="button" id="delete" class="disabled fw-semibold text-center user-select-none" tabindex="-1">DEL</button>
+            <button type="button" id="toggle-sign" class="disabled fw-semibold text-center user-select-none" tabindex="-1">+/-</button>
+            <button type="button" id="operation" class="disabled fw-semibold text-center user-select-none" tabindex="-1">/</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">1</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">2</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">3</button>
+            <button type="button" id="operation" class="disabled fw-semibold text-center user-select-none" tabindex="-1">*</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">4</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">5</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">6</button>
+            <button type="button" id="operation" class="disabled fw-semibold text-center user-select-none" tabindex="-1">+</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">7</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">8</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">9</button>
+            <button type="button" id="operation" class="disabled fw-semibold text-center user-select-none" tabindex="-1">-</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">.</button>
+            <button type="button" id="number" class="disabled fw-semibold text-center user-select-none" tabindex="-1">0</button>
+            <button type="button" id="equals" class="disabled span-two fw-semibold text-center user-select-none" tabindex="-1">=</button>
         </div>
+    </main>
 
-        <button id="all-clear">AC</button>
-        <button id="delete">DEL</button>
-        <button id="toggle-sign">+/-</button>
-        <button id="operation">/</button>
-        <button id="number">1</button>
-        <button id="number">2</button>
-        <button id="number">3</button>
-        <button id="operation">*</button>
-        <button id="number">4</button>
-        <button id="number">5</button>
-        <button id="number">6</button>
-        <button id="operation">+</button>
-        <button id="number">7</button>
-        <button id="number">8</button>
-        <button id="number">9</button>
-        <button id="operation">-</button>
-        <button id="number">.</button>
-        <button id="number">0</button>
-        <button id="equals" class="span-two">=</button>
-    </div>
-
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="js/script.js"></script>
 </body>
 </html>
