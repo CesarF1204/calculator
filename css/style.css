@@ -576,7 +576,7 @@ body {
    3D FLIP RIG — physical "turn it over" interaction
    .calculator-stage  : perspective camera (no layout impact)
    .calculator-flip   : rotating slab (preserve-3d), sized by the front grid
-   .calculator-grid   : FRONT face (unchanged, now backface-hidden)
+   .calculator-grid   : FRONT face (visibility-driven)
    .calculator-back   : BACK face, mirrors the casing, engraved Apple logo
    #flip-toggle       : anchored to the stage so it never shifts layout
    ===================================================================== */
@@ -631,33 +631,33 @@ body {
     100% { transform: rotateY(0deg) translateZ(0); }
 }
 
-/* FRONT face: unchanged grid, just hidden once it turns away.
-   pointer-events: none ensures keys/switches on the front can't be clicked
-   through when viewing the back side. */
+/* FRONT face: unchanged grid. NOTE: backface-visibility is intentionally
+   NOT used anywhere in the flip — WebKit applies it inconsistently (it can
+   hide the incoming back face while keeping the outgoing front visible,
+   which renders a mirrored front instead of the back design). Which face
+   is on screen is decided exclusively by the visibility state machine
+   below, which works identically in every engine. */
 .calculator-grid {
-    /* Both faces MUST be 3D-positioned siblings for backface-visibility to
-       work reliably in Safari/WebKit — with only one transformed child,
-       WebKit flattens the pair and hides the wrong face mid-rotation. */
     transform: translateZ(0);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
 }
 
 /* =====================================================================
-   FACE VISIBILITY STATE MACHINE — the Safari-proof core of the flip.
-   WebKit is unreliable with backface-visibility (a face can vanish
-   entirely, or the front can bleed through the back when WebKit
-   flattens the rig). So WHICH face is on screen is decided explicitly
-   by state below, and the swap happens exactly at the 50% keyframe —
-   the moment the device is edge-on and neither face shows. The 3D
-   rotation itself is untouched; backface-visibility remains as a
-   progressive enhancement for engines that implement it correctly.
+   FACE VISIBILITY STATE MACHINE — the engine-proof core of the flip.
+   WebKit cannot be trusted with backface-visibility, so WHICH face is
+   on screen is decided explicitly by state, and the swap happens at the
+   50% keyframe — the moment the device is edge-on and neither face
+   shows. The 3D rotation itself is untouched.
    ===================================================================== */
 .calculator-back {
     visibility: hidden;
 }
 
-.calculator-flip.is-flipped .calculator-grid {
+/* When flipped, the front face AND everything inside it is hidden.
+   The `*` matters: descendants like the battery indicator and the toast
+   carry their own explicit `visibility: visible` rules, which would
+   otherwise punch straight through the hidden parent in every browser. */
+.calculator-flip.is-flipped .calculator-grid,
+.calculator-flip.is-flipped .calculator-grid * {
     visibility: hidden;
 }
 
@@ -779,8 +779,6 @@ body {
        translateZ (toward the viewer after rotation) cleanly separates the
        layers and keeps the back face on top when flipped. */
     transform: rotateY(180deg) translateZ(1px);
-    -webkit-backface-visibility: hidden;
-    backface-visibility: hidden;
     /* GPU layer hint: stops Safari from re-rasterizing the face mid-turn
        (the visible flicker/blank-back on iPhone). */
     will-change: transform;
@@ -910,7 +908,6 @@ body {
     .calculator-back {
         /* Keep the 1px layer separation from the base rule, WebKit form. */
         -webkit-transform: rotateY(180deg) translateZ(1px);
-        /* -webkit-backface-visibility already set on the base rule. */
     }
 
     .calculator-flip.is-flipped {
