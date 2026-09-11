@@ -940,10 +940,47 @@ html, body {
         --radius-body: 21px;
     }
 
+    /* Flip button on small phones: comfortable touch target (>= 44px),
+       slightly tighter padding + smaller label so it never overflows
+       narrow viewports or causes horizontal scrolling. The wrap fills
+       the row width so the button stays horizontally centered below
+       the calculator, never clipped or pushed off-screen. */
+    .flip-wrap {
+        width: 100%;
+        max-width: 100%;
+        /* iOS Safari home-indicator safe area: extra breathing room at
+           the bottom without changing the desktop layout. */
+        padding-bottom: calc(0.75rem + env(safe-area-inset-bottom, 0px));
+    }
+
     .flip-toggle {
-        top: -11px;
-        right: -9px;
-        width: 2rem;
-        height: 2rem;
+        min-width: 2.75rem;
+        min-height: 2.75rem;
+        height: auto;
+        padding: 0.7rem 1rem;
+        /* Never let a long label stretch past the viewport. */
+        max-width: 100%;
+    }
+
+    .flip-label-text {
+        font-size: 0.78rem;
+        letter-spacing: 0.02em;
+    }
+
+    .flip-icon {
+        width: 18px;
+        height: 18px;
+    }
+}
+
+/* Very narrow devices (iPhone SE class and smaller): keep the button
+   fully visible and touch-friendly while trimming horizontal padding. */
+@media (max-width: 360px) {
+    .flip-toggle {
+        padding: 0.65rem 0.75rem;
+    }
+
+    .flip-toggle .flip-label-text {
+        font-size: 0.72rem;
     }
 }
