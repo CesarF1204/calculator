@@ -58,14 +58,23 @@ const createCalculator = (previousOperand, currentOperand) => {
     * @author Cesar
     */
     const appendNumber = (number) => {
-        if (number === '.' && state.current.includes('.')) return;
+        const currentStr = state.current.toString();
+        if (number === '.' && currentStr.includes('.')) return;
         // If the decimal point is the very first character typed (for example
         // right after clearing or selecting an operation), prepend a leading
         // zero so "." becomes "0." and ".8" becomes "0.8".
-        if (number === '.' && state.current === '') {
+        if (number === '.' && currentStr === '') {
             state.current = '0.';
+        } else if (currentStr === '0' && number.toString() === '0') {
+            // Prevent multiple leading zeros so "0" + "0" stays "0"
+            // instead of building "00", "000000000", etc.
+            return;
+        } else if (currentStr === '0' && number.toString() !== '.' && number.toString() !== '0') {
+            // Replace a lone leading zero with a non-zero digit
+            // so "0" + "5" becomes "5" instead of "05".
+            state.current = number.toString();
         } else {
-            state.current = state.current.toString() + number.toString();
+            state.current = currentStr + number.toString();
         }
     };
 
