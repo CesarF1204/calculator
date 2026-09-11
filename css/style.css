@@ -1,0 +1,291 @@
+/* =====================================================================
+   Simple Calculator — mobile-first, fully responsive styling
+   Fluid grid tracks + fluid type mean the pad scales across phone,
+   tablet and desktop without ever overflowing horizontally.
+   ===================================================================== */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+    font-family: 'Chakra Petch', 'Inter', sans-serif;
+}
+
+html,
+body {
+    /* Belt-and-braces: never allow sideways scrolling on narrow screens */
+    overflow-x: hidden;
+}
+
+body {
+    padding: 0;
+    margin: 0;
+    background-image: linear-gradient(283deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 30%,rgba(130, 130, 130,0.04) 30%, rgba(130, 130, 130,0.04) 49%,rgba(31, 31, 31,0.04) 49%, rgba(31, 31, 31,0.04) 100%),linear-gradient(297deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 20%,rgba(130, 130, 130,0.04) 20%, rgba(130, 130, 130,0.04) 60%,rgba(31, 31, 31,0.04) 60%, rgba(31, 31, 31,0.04) 100%),linear-gradient(242deg, rgba(228, 228, 228,0.04) 0%, rgba(228, 228, 228,0.04) 29%,rgba(130, 130, 130,0.04) 29%, rgba(130, 130, 130,0.04) 48%,rgba(31, 31, 31,0.04) 48%, rgba(31, 31, 31,0.04) 100%),linear-gradient(90deg, rgb(0,0,0),rgb(0,0,0));
+}
+
+.calculator-grid {
+    /* Each of the 4 columns is at most 110px on large screens (matching the
+       original fixed width) but shrinks to a fluid 25% on narrow viewports,
+       so the pad always fits the width with no horizontal scroll. */
+    --col: min(110px, 25%);
+    /* Rows take whatever vertical space is available (5 button rows below the
+       output), with a comfortable minimum tap height of ~52px. */
+    --row: max(3.25rem, min(5.5rem, calc((100vh - 9rem) / 5)));
+
+    display: grid;
+    place-content: center;
+    min-height: 100vh;
+    grid-template-columns: repeat(4, var(--col));
+    grid-template-rows: minmax(9rem, auto) repeat(5, var(--row));
+}
+
+.calculator-grid > button {
+    cursor: pointer;
+    font-size: clamp(1.5rem, 7vw, 2rem);
+    border: 1px solid white;
+    outline: none;
+    background-color: rgba(255, 255, 255, .75);
+
+    /* Touch-friendly interaction */
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+    transition: background-color 120ms ease, transform 120ms ease;
+}
+
+/* Only lift on hover for devices that can actually hover (mouse/trackpad) */
+@media (hover: hover) {
+    .calculator-grid > button:hover {
+        background-color: rgba(255, 255, 255, .90);
+    }
+}
+
+/* Instant tactile feedback while pressed — key on touchscreens */
+.calculator-grid > button:active {
+    background-color: rgba(255, 255, 255, .95);
+    transform: scale(.98);
+}
+
+.calculator-grid > button:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+    .calculator-grid > button {
+        transition: none;
+    }
+}
+
+.span-two {
+    grid-column: span 2;
+}
+
+.output {
+    grid-column: 1 / -1;
+    position: relative;
+    background-color: rgba(0, 0, 0, .75);
+    border: 1px solid white;
+    display: flex;
+    align-items: flex-end;
+    justify-content: flex-end;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 1rem 1.25rem;
+    /* Long results wrap in place rather than overflowing or scrolling */
+    overflow-wrap: anywhere;
+    word-break: break-all;
+}
+
+.output .previous-operand {
+    color: rgba(255, 255, 255, .75);
+    font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+}
+
+.output .current-operand {
+    color: white;
+    font-size: clamp(2rem, 8vw, 2.5rem);
+    min-height: 1.25em;
+}
+
+/* =====================================================================
+   ON/OFF power switch (upper-left) + toast message + disabled state
+   ===================================================================== */
+
+/* The switch lives inside the output panel, pinned to its top-left. */
+.power-switch {
+    position: absolute;
+    top: 0.4rem;
+    left: 0.4rem;
+    display: inline-flex;
+    align-items: center;
+    padding: 0;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    outline: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+}
+
+.power-switch:focus-visible {
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+.power-switch-track {
+    position: relative;
+    width: 4rem;
+    height: 1.8rem;
+    border-radius: 999px;
+    background-color: #565d6b;        /* OFF = slate gray */
+    transition: background-color 200ms ease;
+}
+
+/* Current state text, printed inside the switch (always visible). */
+.power-switch-label {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.03rem;
+}
+
+.power-switch-knob {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1.8rem;
+    height: 1.8rem;
+    border-radius: 50%;
+    background-color: #fff;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    transition: transform 200ms ease;
+}
+
+/* OFF (default): knob on the left, label centered in the open space on the
+   right, with clearance from both the knob and the switch's right border. */
+.power-switch .power-switch-label {
+    left: 2.2rem;
+}
+
+/* ON: green track, knob slides to the right, label switches to the left. */
+.power-switch.on .power-switch-knob {
+    transform: translateX(2.2rem);
+}
+
+.power-switch.on .power-switch-label {
+    left: 0.78rem;
+}
+
+.power-switch.on .power-switch-track {
+    background-color: #4ABB3F;        /* ON = green */
+}
+
+/* Toast message shown when a disabled key is pressed while OFF. It is styled
+   as a compact notification card with an icon, a message and a countdown
+   progress bar so users know how long it will stay visible. */
+.toast {
+    position: absolute;
+    top: 2.9rem;
+    left: 50%;
+    max-width: calc(100% - 1rem);
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.55rem 0.8rem 0.65rem;   /* extra bottom room for the progress bar */
+    background-color: rgba(22, 22, 28, 0.95);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 10px;
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+    font-size: clamp(0.72rem, 2.6vw, 0.85rem);
+    font-weight: 500;
+    text-align: left;
+    /* Hidden by default: invisible and ignores pointers. */
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    /* Slide up + fade in, slide down + fade out. The visibility delay keeps
+       the element visible/pointer-interactive only while it is shown. */
+    transform: translateX(-50%) translateY(10px);
+    transition: opacity 220ms ease, transform 220ms ease, visibility 220ms;
+}
+
+/* Warning icon (a bold "!") */
+.toast-icon {
+    display: inline-grid;
+    place-items: center;
+    flex: 0 0 auto;
+    width: 1.15rem;
+    height: 1.15rem;
+    border-radius: 50%;
+    background-color: rgba(240, 169, 59, 0.18);
+    color: #f0a93b;
+    font-size: 0.7rem;
+    font-weight: 800;
+    line-height: 1;
+}
+
+/* Message text: renders exactly the two lines given in the string (only the
+   "\n" creates a break — no automatic word wrapping) and is centered. */
+.toast-message {
+    flex: 1 1 auto;
+    white-space: pre;
+    text-align: center;
+}
+
+/* Countdown progress bar pinned to the bottom of the toast. Its width is
+   driven from JavaScript so it pauses whenever the toast is hovered. */
+.toast-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    height: 0.25rem;
+    width: 100%;
+    border-radius: 3px;
+    background-color: rgba(240, 169, 59, 0.9);
+    pointer-events: none;
+}
+
+/* Visible state: fully opaque, allows pointer interaction. */
+.toast.show {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Respect users who prefer reduced motion: no slide, just appear/disappear. */
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        transition: opacity 100ms ease, visibility 100ms;
+        transform: translateX(-50%);
+    }
+
+    .toast.show {
+        transform: translateX(-50%);
+    }
+}
+
+/* Disabled calculator keys: stay visible but clearly inactive. */
+.calculator-grid > button.disabled {
+    cursor: not-allowed;
+    background-color: rgba(255, 255, 255, 0.22);
+    color: rgba(160, 160, 160, 0.45);
+}
+
+@media (hover: hover) {
+    .calculator-grid > button.disabled:hover {
+        background-color: rgba(255, 255, 255, 0.22);
+    }
+}
+
+.calculator-grid > button.disabled:active,
+.calculator-grid > button.disabled:focus {
+    transform: none;
+}

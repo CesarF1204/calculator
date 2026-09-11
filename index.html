@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple Calculator</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="calculator-grid">
+        <div class="output">
+            <button id="power-switch" class="power-switch"
+                    type="button" role="switch" aria-pressed="false" aria-label="Power switch">
+                <span class="power-switch-track">
+                    <span class="power-switch-label" id="power-switch-label">OFF</span>
+                    <span class="power-switch-knob"></span>
+                </span>
+            </button>
+
+            <div id="previous-operand" class="previous-operand"></div>
+            <div id="current-operand" class="current-operand"></div>
+
+            <div id="toast" class="toast" role="status" aria-live="polite">
+                <span class="toast-icon" aria-hidden="true">!</span>
+                <span id="toast-message" class="toast-message"></span>
+                <span class="toast-progress" aria-hidden="true"></span>
+            </div>
+        </div>
+
+        <button id="all-clear" class="span-two">AC</button>
+        <button id="delete">DEL</button>
+        <button id="operation">/</button>
+        <button id="number">1</button>
+        <button id="number">2</button>
+        <button id="number">3</button>
+        <button id="operation">*</button>
+        <button id="number">4</button>
+        <button id="number">5</button>
+        <button id="number">6</button>
+        <button id="operation">+</button>
+        <button id="number">7</button>
+        <button id="number">8</button>
+        <button id="number">9</button>
+        <button id="operation">-</button>
+        <button id="number">.</button>
+        <button id="number">0</button>
+        <button id="equals" class="span-two">=</button>
+    </div>
+
+    <script src="js/script.js"></script>
+</body>
+</html>
