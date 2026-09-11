@@ -585,6 +585,8 @@ body {
     /* The stage IS the flex item of <main>, so 100% here resolves against
        a definite size — this is what keeps the device at its capped width. */
     width: min(480px, 100%);
+    /* -webkit- prefix: required by older WebKit builds; harmless elsewhere. */
+    -webkit-perspective: 1600px;
     perspective: 1600px;
     perspective-origin: 50% 42%;
 }
@@ -592,6 +594,12 @@ body {
 .calculator-flip {
     --radius-body: 26px; /* shared with the back face (media query keeps both in sync) */
     position: relative;
+    /* Explicit origin so both faces turn around the exact same axis
+       (Safari occasionally drifts from the default center on odd-sized slabs). */
+    transform-origin: 50% 50%;
+    /* -webkit- prefix required for preserve-3d in older iOS WebKit — without
+       it Safari flattens the rig and the back face never renders. */
+    -webkit-transform-style: preserve-3d;
     transform-style: preserve-3d;
     transform: rotateY(0deg) translateZ(0);
     will-change: transform;
@@ -627,8 +635,64 @@ body {
    pointer-events: none ensures keys/switches on the front can't be clicked
    through when viewing the back side. */
 .calculator-grid {
+    /* Both faces MUST be 3D-positioned siblings for backface-visibility to
+       work reliably in Safari/WebKit — with only one transformed child,
+       WebKit flattens the pair and hides the wrong face mid-rotation. */
+    transform: translateZ(0);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+}
+
+/* =====================================================================
+   FACE VISIBILITY STATE MACHINE — the Safari-proof core of the flip.
+   WebKit is unreliable with backface-visibility (a face can vanish
+   entirely, or the front can bleed through the back when WebKit
+   flattens the rig). So WHICH face is on screen is decided explicitly
+   by state below, and the swap happens exactly at the 50% keyframe —
+   the moment the device is edge-on and neither face shows. The 3D
+   rotation itself is untouched; backface-visibility remains as a
+   progressive enhancement for engines that implement it correctly.
+   ===================================================================== */
+.calculator-back {
+    visibility: hidden;
+}
+
+.calculator-flip.is-flipped .calculator-grid {
+    visibility: hidden;
+}
+
+.calculator-flip.is-flipped .calculator-back {
+    visibility: visible;
+}
+
+/* Mid-flip swaps: the outgoing face stays visible until edge-on (50%),
+   then hides; the incoming face does the reverse. fill-mode `both` also
+   pins the correct state at the very first and last animation frames,
+   so there is no flicker at the hand-off to the static .is-flipped state. */
+@keyframes face-hide-at-half {
+    0%, 49.9% { visibility: visible; }
+    50%, 100% { visibility: hidden; }
+}
+
+@keyframes face-show-at-half {
+    0%, 49.9% { visibility: hidden; }
+    50%, 100% { visibility: visible; }
+}
+
+.calculator-flip.is-flipping-to-back .calculator-grid {
+    animation: face-hide-at-half 780ms linear both;
+}
+
+.calculator-flip.is-flipping-to-back .calculator-back {
+    animation: face-show-at-half 780ms linear both;
+}
+
+.calculator-flip.is-flipping-to-front .calculator-grid {
+    animation: face-show-at-half 780ms linear both;
+}
+
+.calculator-flip.is-flipping-to-front .calculator-back {
+    animation: face-hide-at-half 780ms linear both;
 }
 
 .calculator-flip.is-flipped .calculator-grid {
@@ -710,9 +774,16 @@ body {
     position: absolute;
     inset: 0;
     z-index: 0;
-    transform: rotateY(180deg);
+    /* rotateY(180deg) alone sits in the exact same plane as the front face,
+       which makes Safari z-fight/flicker between the two faces. The 1px
+       translateZ (toward the viewer after rotation) cleanly separates the
+       layers and keeps the back face on top when flipped. */
+    transform: rotateY(180deg) translateZ(1px);
     -webkit-backface-visibility: hidden;
     backface-visibility: hidden;
+    /* GPU layer hint: stops Safari from re-rasterizing the face mid-turn
+       (the visible flicker/blank-back on iPhone). */
+    will-change: transform;
     border: 1px solid #0b0d11;
     border-radius: var(--radius-body);
     outline: 1px solid rgba(255, 255, 255, .07);
@@ -798,14 +869,72 @@ body {
     white-space: nowrap;
 }
 
-/* Reduced motion: swap sides instantly, no rotation/lift. */
+/* Reduced motion: swap sides instantly, no rotation/lift. Disables the
+   flipper turn AND the mid-flip face-visibility swaps, so the faces
+   follow the instant .is-flipped state change. */
 @media (prefers-reduced-motion: reduce) {
     .calculator-flip,
     .calculator-flip.is-flipping-to-back,
-    .calculator-flip.is-flipping-to-front {
+    .calculator-flip.is-flipping-to-front,
+    .calculator-flip.is-flipping-to-back .calculator-grid,
+    .calculator-flip.is-flipping-to-back .calculator-back,
+    .calculator-flip.is-flipping-to-front .calculator-grid,
+    .calculator-flip.is-flipping-to-front .calculator-back {
         animation: none;
         transition: none;
     }
+}
+
+/* =====================================================================
+   SAFARI / iOS 3D HARDENING
+   WebKit (all Safari versions, iPhone included) is the only engine
+   that still needs the legacy -webkit- 3D declarations and an extra
+   GPU nudge to keep two coplanar faces from z-fighting, flickering,
+   or rendering the back face blank/mirrored during rotateY turns.
+   Scoped with @supports so Firefox/Chrome are untouched.
+   ===================================================================== */
+@supports (-webkit-touch-callout: none) {
+    .calculator-flip {
+        /* Legacy WebKit token for preserve-3d. */
+        -webkit-transform-style: preserve-3d;
+    }
+
+    .calculator-grid,
+    .calculator-back {
+        /* Promote each face to its own composited layer BEFORE the turn
+           starts — this is the fix for Safari's "back face is blank /
+           shows the front" flicker at the start of the animation. */
+        -webkit-transform: translateZ(0.01px);
+    }
+
+    .calculator-back {
+        /* Keep the 1px layer separation from the base rule, WebKit form. */
+        -webkit-transform: rotateY(180deg) translateZ(1px);
+        /* -webkit-backface-visibility already set on the base rule. */
+    }
+
+    .calculator-flip.is-flipped {
+        -webkit-transform: rotateY(180deg) translateZ(0);
+    }
+
+    @keyframes flip-to-back {
+        0%   { -webkit-transform: rotateY(0deg) translateZ(0); }
+        50%  { -webkit-transform: rotateY(90deg) translateZ(48px); }
+        100% { -webkit-transform: rotateY(180deg) translateZ(0); }
+    }
+
+    @keyframes flip-to-front {
+        0%   { -webkit-transform: rotateY(180deg) translateZ(0); }
+        50%  { -webkit-transform: rotateY(90deg) translateZ(48px); }
+        100% { -webkit-transform: rotateY(0deg) translateZ(0); }
+    }
+}
+
+/* Page-level guard: nothing (rotation overhang, wide shadow) may create
+   horizontal scrolling on any iPhone width, portrait or landscape. */
+html, body {
+    max-width: 100%;
+    overflow-x: hidden;
 }
 
 /* Keep both faces + the docked control in sync on small screens. */
