@@ -36,7 +36,9 @@ body {
     place-content: center;
     min-height: 100vh;
     grid-template-columns: repeat(4, var(--col));
-    grid-template-rows: minmax(9rem, auto) repeat(5, var(--row));
+    /* The top (display) row is a fixed height so the display never grows,
+       shifts, or reflows when a long number is entered. */
+    grid-template-rows: 9rem repeat(5, var(--row));
 }
 
 .calculator-grid > button {
@@ -99,6 +101,12 @@ body {
         transition: none;
         transform: none;
     }
+    /* No font-size animation for the operands; the number still scales in a
+       single step to fit the fixed display, just without the smooth ease. */
+    .output .previous-operand,
+    .output .current-operand {
+        transition: none;
+    }
 }
 
 .span-two {
@@ -116,20 +124,41 @@ body {
     flex-direction: column;
     gap: 0.35rem;
     padding: 1rem 1.25rem;
-    /* Long results wrap in place rather than overflowing or scrolling */
-    overflow-wrap: anywhere;
-    word-break: break-all;
+    /* The display is a fixed, single-line panel: it must never wrap, expand,
+       or shift. Long numbers are scaled down (see JS fitOperandToDisplay) to
+       stay on one line, and overflow is clipped purely as a safety net. */
+    overflow: hidden;
 }
 
 .output .previous-operand {
     color: rgba(255, 255, 255, .75);
     font-size: clamp(1.1rem, 4.5vw, 1.5rem);
+    /* Both operands are locked to one line, right-aligned and filling the
+       panel; JS shrinks the font so the full value always fits. */
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+    text-align: right;
+    transition: font-size 110ms ease;
 }
 
 .output .current-operand {
     color: white;
     font-size: clamp(2rem, 8vw, 2.5rem);
     min-height: 1.25em;
+    white-space: nowrap;
+    overflow: hidden;
+    width: 100%;
+    text-align: right;
+    transition: font-size 110ms ease;
+}
+
+/* Used by JS while measuring text so active font transitions never skew the
+   sampled (base) size. Applied transiently within a single synchronous step,
+   so it causes no visible difference. */
+.no-transition,
+.no-transition * {
+    transition: none !important;
 }
 
 /* =====================================================================

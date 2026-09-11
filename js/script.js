@@ -150,20 +150,31 @@ const createCalculator = (previousOperand, currentOperand) => {
     */
     const getDisplay = (number) => {
         const stringNumber = number.toString();
-        const integerDigits = parseFloat(stringNumber.split('.')[0]);
-        const decimalDigits = stringNumber.split('.')[1];
-        let integerDisplay;
-
-        if (isNaN(integerDigits)) {
-            integerDisplay = '';
-        } else {
-            integerDisplay = integerDigits.toLocaleString('en', { maximumFractionDigits: 0 });
+        if (stringNumber === '') return '';
+        /* Values in exponential notation (e.g. "1e+21" from a huge computed
+           result) have no plain integer part to group, so show them as-is
+           instead of mangling them through a Number conversion. */
+        if (/e/i.test(stringNumber)) return stringNumber;
+        const [rawInteger = '', ...rest] = stringNumber.split('.');
+        const decimalDigits = rest.length > 0 ? rest.join('.') : undefined;
+        /* Pull off a leading minus sign so grouping only sees plain digits. */
+        let sign = '';
+        let integerPart = rawInteger;
+        if (integerPart.startsWith('-')) {
+            sign = '-';
+            integerPart = integerPart.slice(1);
         }
+        /* Group the integer digits with commas using pure string logic.
+           The old code ran parseFloat + toLocaleString, which converts to a
+           JS Number (only ~15-16 exact digits), so typing more than ~16
+           repeating digits rounded the tail into zeros (e.g. 25 ones showed
+           "...0000000"). Grouping the raw string keeps every typed digit. */
+        const integerDisplay = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 
         if (decimalDigits != null) {
-            return `${integerDisplay}.${decimalDigits}`;
+            return `${sign}${integerDisplay}.${decimalDigits}`;
         } else {
-            return integerDisplay;
+            return `${sign}${integerDisplay}`;
         }
     };
 
@@ -183,6 +194,10 @@ const createCalculator = (previousOperand, currentOperand) => {
         } else {
             previousOperand.innerText = '';
         }
+        /* Keep every value on a single line by scaling down the font so the
+           whole number stays inside the fixed display. */
+        fitOperandToDisplay(currentOperand);
+        fitOperandToDisplay(previousOperand);
     };
 
     clear();
@@ -195,6 +210,57 @@ const createCalculator = (previousOperand, currentOperand) => {
         remove,
         update
     };
+};
+/**
+ * DOCU: Shrinks an operand's font size so the full value always stays on one
+ * line inside the fixed display. The element fills the output panel and is
+ * single-line (nowrap) with hidden overflow, so its own clientWidth is the
+ * available space and its scrollWidth reflects how wide the text is at the
+ * current font. The font is reduced proportionally until scrollWidth stops
+ * exceeding clientWidth — so long numbers scale down smoothly instead of
+ * overflowing, wrapping, or pushing the layout around. Short numbers keep the
+ * normal full size. <br>
+ * Last Updated Date: September 12, 2026 <br>
+ * @function fitOperandToDisplay
+ * @param {object} element - the operand element to fit (current or previous)
+ * @author Cesar
+ */
+const fitOperandToDisplay = (element) => {
+    const text = element.textContent;
+
+    /* The available width: the element fills the output panel, so its own
+       clientWidth is the fixed space it can use. */
+    const available = element.clientWidth;
+
+    /* Measure against the true base size: drop the font transition so the
+       computed (non-animated) value is sampled, then reset to the responsive
+       CSS clamp (max) size before measuring. */
+    document.body.classList.add('no-transition');
+    element.style.fontSize = '';              /* reset to the CSS clamp (max) */
+    const baseSize = parseFloat(getComputedStyle(element).fontSize);
+    element.style.fontSize = `${baseSize}px`;
+
+    /* Empty display (or no width yet) → use the normal full-size font. */
+    if (available <= 0 || text === '') {
+        element.style.fontSize = '';
+        document.body.classList.remove('no-transition');
+        return;
+    }
+
+    const minSize = 0.5;
+    let size = baseSize;
+    let guard = 0;
+
+    /* Text width scales almost proportionally with font size, so each ratio
+       step converges quickly; the loop guards against edge cases. */
+    while (element.scrollWidth > available + 0.5 && size > minSize && guard < 60) {
+        size = Math.max(minSize, size * (available / element.scrollWidth) * 0.999);
+        element.style.fontSize = `${size}px`;
+        guard++;
+    }
+
+    element.style.fontSize = `${size}px`;
+    document.body.classList.remove('no-transition');
 };
 
 /**
@@ -728,6 +794,11 @@ window.addEventListener('blur', () => {
     stopKeyRepeat();
     releaseAllButtons();
 });
+
+/* Re-fit the display on window resizes so the fixed layout stays consistent
+   and long numbers keep fitting across different screen sizes. */
+window.addEventListener('resize', () => calculator.update());
+
 /**
  * DOCU: This call sets the default state of the calculator to OFF. <br>
  * The calculator starts turned OFF, so the power switch is off and all <br>
