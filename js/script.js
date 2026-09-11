@@ -2,7 +2,7 @@
 * DOCU: This function is used to create a calculator instance. <br>
 * It is a factory that encapsulates the calculator's internal state and <br>
 * exposes the operations (appendNumber, chooseOperation, compute, clear, <br>
-* remove, update) needed to drive the calculator. <br>
+* remove, toggleSign, update) needed to drive the calculator. <br>
 * Last Updated Date: September 12, 2026 <br>
 * @function createCalculator
 * @param {object} previousOperand - the DOM element that displays the previous operand
@@ -46,6 +46,27 @@ const createCalculator = (previousOperand, currentOperand) => {
     const remove = () => {
         state.current = state.current.toString().slice(0, -1);
         state.operation = undefined;
+    };
+
+    /**
+    * DOCU: This function is used to toggle the sign of the current operand. <br>
+    * It flips a positive value to negative and a negative value to positive <br>
+    * (e.g. "5" becomes "-5" and "-5" becomes "5"). Empty input and zero <br>
+    * (including "0", "0.0", etc.) are left unchanged. <br>
+    * Last Updated Date: September 12, 2026 <br>
+    * @function toggleSign
+    * @author Cesar
+    */
+    const toggleSign = () => {
+        const currentStr = state.current.toString();
+        if (currentStr === '' || currentStr === '-') return;
+        /* Zero has no signed form, so leave "0", "0.0", "-0", etc. untouched. */
+        if (currentStr !== '' && !isNaN(parseFloat(currentStr)) && parseFloat(currentStr) === 0) return;
+        if (currentStr.startsWith('-')) {
+            state.current = currentStr.slice(1);
+        } else {
+            state.current = '-' + currentStr;
+        }
     };
 
     /**
@@ -217,6 +238,7 @@ const createCalculator = (previousOperand, currentOperand) => {
         compute,
         clear,
         remove,
+        toggleSign,
         update
     };
 };
@@ -286,6 +308,7 @@ const previousOperand = document.querySelector('#previous-operand');
 const currentOperand = document.querySelector('#current-operand');
 const allClear = document.querySelector('#all-clear');
 const deleteButton = document.querySelector('#delete');
+const toggleSignButton = document.querySelector('#toggle-sign');
 const equalsButton = document.querySelector('#equals');
 
 /**
@@ -342,7 +365,8 @@ let toastPaused = false; /* true while the toast is hovered/focused             
 /**
 * DOCU: This is a combined list of all interactive calculator keys. <br>
 * It includes the number buttons, operation buttons, the equals button, <br>
-* the all-clear (AC) button, and the delete (DEL) button. It is used to <br>
+* the all-clear (AC) button, the delete (DEL) button, and the sign toggle <br>
+* (+/-) button. It is used to <br>
 * enable/disable every key when the device is turned on/off. <br>
 * Last Updated Date: September 12, 2026 <br>
 * @type {Element[]}
@@ -353,7 +377,8 @@ const keyButtons = [
     ...operationButtons,
     equalsButton,
     allClear,
-    deleteButton
+    deleteButton,
+    toggleSignButton
 ];
 
 /**
@@ -589,6 +614,8 @@ const performKeyAction = (button) => {
         calculator.clear();
     } else if (button === deleteButton) {
         calculator.remove();
+    } else if (button === toggleSignButton) {
+        calculator.toggleSign();
     } else if (/^[0-9.]$/.test(button.innerText)) {
         calculator.appendNumber(button.innerText);
     } else {
@@ -600,7 +627,7 @@ const performKeyAction = (button) => {
 
 /**
 * DOCU: This single loop wires every calculator key (numbers, operations,
-* equals, AC and DEL) to the shared action dispatch. It also takes the keys
+* equals, AC, DEL and +/-) to the shared action dispatch. It also takes the keys
 * out of the Tab order and releases focus after use, so keyboard navigation
 * can never leave a calculator button visibly focused or selected. <br>
 * Last Updated Date: September 12, 2026 <br>
@@ -650,6 +677,7 @@ const keyToButton = (key) => {
     if (key === 'Escape') return allClear;
     if (key === 'Backspace' || key === 'Delete') return deleteButton;
     if (key === 'Enter' || key === '=') return equalsButton;
+    if (key === 'F9' || key === 'n' || key === 'N') return toggleSignButton;
     if (/^[0-9.]$/.test(key)) return numberButtonByKey[key];
     return operationButtonByKey[key];
 };
