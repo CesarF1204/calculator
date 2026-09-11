@@ -25,6 +25,14 @@
                     </span>
                 </button>
 
+                <div id="battery-status" class="battery-status d-inline-flex align-items-center gap-1" role="status" aria-live="polite" aria-label="Battery level" hidden>
+                    <span class="battery-icon d-inline-flex align-items-center" aria-hidden="true">
+                        <span class="battery-shell"><span id="battery-level" class="battery-level"></span></span>
+                        <span class="battery-cap"></span>
+                    </span>
+                    <span id="battery-percentage" class="battery-percentage fw-semibold">--%</span>
+                </div>
+
                 <div id="previous-operand" class="previous-operand text-end text-nowrap overflow-hidden w-100 fw-medium"></div>
                 <div id="current-operand" class="current-operand text-end text-nowrap overflow-hidden w-100 fw-semibold"></div>
 

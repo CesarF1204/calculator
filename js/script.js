@@ -526,6 +526,8 @@ const turnOn = () => {
     keyButtons.forEach(button => button.classList.remove('disabled'));
     /* Turning on resolves the "turned off" notice, so dismiss it. */
     hideToast();
+    /* Powered on: reveal the battery indicator in the upper-right. */
+    showBattery();
 };
 
 /**
@@ -545,6 +547,8 @@ const turnOff = () => {
     /* Turning off also clears the display. */
     calculator.clear();
     calculator.update();
+    /* Powered off: hide the battery indicator and stop its updates. */
+    hideBattery();
 };
 
 /**
@@ -863,6 +867,143 @@ window.addEventListener('blur', () => {
 /* Re-fit the display on window resizes so the fixed layout stays consistent
    and long numbers keep fitting across different screen sizes. */
 window.addEventListener('resize', () => calculator.update());
+
+/* ------------------------------------------------------------------
+   Battery status indicator — shown in the upper-right while ON.
+   - Uses the real Battery Status API (navigator.getBattery) when the
+     browser supports it, and updates live on level/charging changes.
+   - Falls back to a slow simulated drain elsewhere so the percentage
+     still updates dynamically during development/demo.
+   - Low (<20%) turns the icon amber; critically low (<10%) turns it
+     red with a pulse; each threshold warns once via the toast.
+   ------------------------------------------------------------------ */
+
+const batteryStatus = document.getElementById('battery-status');
+const batteryLevel = document.getElementById('battery-level');
+const batteryPercentage = document.getElementById('battery-percentage');
+
+const BATTERY_LOW_THRESHOLD = 20;        /* percent                          */
+const BATTERY_CRITICAL_THRESHOLD = 10;   /* percent                          */
+const BATTERY_SIM_START = 87;            /* simulated starting level, %      */
+const BATTERY_SIM_STEP = 1;              /* percent lost per simulated tick  */
+const BATTERY_SIM_INTERVAL = 4000;       /* ms between simulated ticks       */
+
+let batteryLevelValue = null;    /* 0-100, null until first reading */
+let batteryCharging = false;
+let batterySimTimer = null;      /* fallback drain timer            */
+let warnedLow = false;           /* toast shown only once per event */
+let warnedCritical = false;
+
+/**
+* DOCU: Applies the current battery level to the indicator: updates the <br>
+* fill width, the percentage text, and the low/critical color states. <br>
+* Last Updated Date: September 12, 2026 <br>
+* @function renderBattery
+* @author Cesar
+*/
+const renderBattery = () => {
+    if (batteryLevelValue === null) return;
+    const level = Math.max(0, Math.min(100, Math.round(batteryLevelValue)));
+
+    batteryLevel.style.width = `${level}%`;
+    batteryPercentage.innerText = `${level}%`;
+
+    const isLow = level < BATTERY_LOW_THRESHOLD;
+    const isCritical = level < BATTERY_CRITICAL_THRESHOLD;
+
+    batteryStatus.classList.toggle('battery-low', isLow && !isCritical);
+    batteryStatus.classList.toggle('battery-critical', isCritical);
+
+    /* One-time toast warnings as the battery drops past each threshold. */
+    if (isCritical && !warnedCritical) {
+        warnedCritical = true;
+        showToast('Battery critically low!\nPlease charge your device.');
+    } else if (isLow && !warnedLow) {
+        warnedLow = true;
+        showToast('Battery low.\nPlease charge your device soon.');
+    }
+    /* Charging resets the warnings so they can fire again if it drops. */
+    if (batteryCharging) {
+        warnedLow = false;
+        warnedCritical = false;
+    }
+};
+
+/**
+* DOCU: Sets the battery state from a 0-1 fraction (as reported by the <br>
+* Battery Status API) and re-renders the indicator. <br>
+* Last Updated Date: September 12, 2026 <br>
+* @function setBatteryState
+* @param {number} levelFraction - battery level as a 0-1 fraction
+* @param {boolean} charging - whether the battery is currently charging
+* @author Cesar
+*/
+const setBatteryState = (levelFraction, charging) => {
+    batteryLevelValue = levelFraction * 100;
+    batteryCharging = Boolean(charging);
+    renderBattery();
+};
+
+/**
+* DOCU: Reveals the battery indicator and starts keeping it up to date. <br>
+* Prefers the real Battery Status API; otherwise starts the simulated <br>
+* drain timer so the percentage visibly changes over time. <br>
+* Last Updated Date: September 12, 2026 <br>
+* @function showBattery
+* @author Cesar
+*/
+const showBattery = () => {
+    batteryStatus.hidden = false;
+    batteryStatus.classList.add('show');
+    if (batterySimTimer) {
+        /* Re-showing: sync from wherever the simulation is. */
+        renderBattery();
+        return;
+    }
+    if (navigator.getBattery) {
+        navigator.getBattery().then(battery => {
+            const sync = () => setBatteryState(battery.level, battery.charging);
+            sync();
+            battery.addEventListener('levelchange', sync);
+            battery.addEventListener('chargingchange', sync);
+        }).catch(() => startBatterySimulation());
+    } else {
+        startBatterySimulation();
+    }
+};
+
+/**
+* DOCU: Starts the fallback simulated drain: begins at a healthy level and <br>
+* loses BATTERY_SIM_STEP percent every BATTERY_SIM_INTERVAL ms, pausing <br>
+* while the page is hidden so the drain never jumps after returning. <br>
+* Last Updated Date: September 12, 2026 <br>
+* @function startBatterySimulation
+* @author Cesar
+*/
+const startBatterySimulation = () => {
+    if (batterySimTimer) return;
+    if (batteryLevelValue === null) batteryLevelValue = BATTERY_SIM_START;
+    renderBattery();
+    batterySimTimer = setInterval(() => {
+        if (document.hidden) return;
+        if (!batteryCharging && batteryLevelValue > 0) {
+            batteryLevelValue = Math.max(0, batteryLevelValue - BATTERY_SIM_STEP);
+            renderBattery();
+        }
+    }, BATTERY_SIM_INTERVAL);
+};
+
+/**
+* DOCU: Hides the battery indicator (when the calculator powers off). The <br>
+* simulation timer keeps running so the level continues to drain like a <br>
+* real device, and re-powering simply reveals it again. <br>
+* Last Updated Date: September 12, 2026 <br>
+* @function hideBattery
+* @author Cesar
+*/
+const hideBattery = () => {
+    batteryStatus.classList.remove('show');
+};
 
 /**
  * DOCU: This call sets the default state of the calculator to OFF. <br>
