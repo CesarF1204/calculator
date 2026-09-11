@@ -14,12 +14,6 @@ const createCalculator = (previousOperand, currentOperand) => {
     * DOCU: This object holds the internal state of the calculator. <br>
     * It stores the current operand, the previous operand, and the <br>
     * pending operation that is about to be performed. <br>
-    * Last Updated Date: September 12, 2026 <br>
-    * @type {object}
-    * @property {string} current - the current operand being entered
-    * @property {string} previous - the previous (stored) operand
-    * @property {string|undefined} operation - the pending operation symbol
-    * @author Cesar
     */
     let state = {
         current: '',
@@ -78,18 +72,35 @@ const createCalculator = (previousOperand, currentOperand) => {
     /**
     * DOCU: This function is used to select an arithmetic operation (+, -, *, /). <br>
     * It stores the current operand as the previous operand and sets the <br>
-    * operation symbol. If a previous operand already exists, it computes <br>
-    * the intermediate result first (chained calculations). <br>
+    * operation symbol. If a previous operand and a current operand both <br>
+    * exist, it computes the intermediate result first (chained calculations). <br>
+    * If an operation is already pending and no new operand has been entered, <br>
+    * the previously selected operator is simply replaced without any <br>
+    * calculation (e.g. pressing "*" after "3 +" turns it into "3 *"). <br>
     * Last Updated Date: September 12, 2026 <br>
     * @function chooseOperation
     * @param {string} operation - the operation symbol the user selected
     * @author Cesar
     */
     const chooseOperation = (operation) => {
-        if (state.current === '') return;
-        if (state.previous !== '') {
+        // Nothing to attach an operator to (empty display), so ignore the press.
+        if (state.current === '' && state.previous === '') return;
+
+        // An operator is already pending and the user hasn't typed a new
+        // operand yet — they are changing their mind about the operator, so
+        // just swap the symbol without computing anything.
+        if (state.current === '' && state.operation != null) {
+            state.operation = operation;
+            return;
+        }
+
+        // A previous operand and a new operand both exist, so chain the
+        // calculation: compute the running result before applying the new
+        // operator (e.g. "3 + 4 *" becomes "7 *").
+        if (state.previous !== '' && state.current !== '') {
             compute();
         }
+
         state.operation = operation;
         state.previous = state.current;
         state.current = '';
