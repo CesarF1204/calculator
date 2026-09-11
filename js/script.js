@@ -36,16 +36,33 @@ const createCalculator = (previousOperand, currentOperand) => {
     };
 
     /**
-    * DOCU: This function is used to delete the last digit of the current operand. <br>
-    * It is triggered when the user presses the delete (DEL) key. It also <br>
-    * clears any pending operation that may have been selected. <br>
+    * DOCU: This function is used to delete the last character of the current <br>
+    * operand, one character at a time (backspace behaviour). It is triggered <br>
+    * when the user presses the delete (DEL) key. Once the current operand is <br>
+    * fully deleted and a pending expression exists, the upper (previous) <br>
+    * value is moved down into the current input so DEL can keep deleting it. <br>
     * Last Updated Date: September 12, 2026 <br>
     * @function remove
     * @author Cesar
     */
     const remove = () => {
-        state.current = state.current.toString().slice(0, -1);
-        state.operation = undefined;
+        /* Backspace behaviour: delete exactly ONE character from the right of
+           the current input on every press. */
+        const currentStr = state.current.toString();
+        if (currentStr !== '') {
+            state.current = currentStr.slice(0, -1);
+            return;
+        }
+        /* The current input is already fully deleted. If a pending expression
+           exists (previous operand + operation on the upper display), move the
+           upper value down into the current input so DEL can keep deleting it
+           one character at a time. The pending operation is cleared because
+           the restored value becomes the editable input again. */
+        if (state.previous !== '') {
+            state.current = state.previous;
+            state.previous = '';
+            state.operation = undefined;
+        }
     };
 
     /**
@@ -959,6 +976,7 @@ const batteryPercentage = document.getElementById('battery-percentage');
 
 const BATTERY_LOW_THRESHOLD = 20;        /* percent                          */
 const BATTERY_CRITICAL_THRESHOLD = 10;   /* percent                          */
+const BATTERY_MIN_LEVEL = 1;             /* percent — never displayed lower  */
 const BATTERY_SIM_START = 87;            /* simulated starting level, %      */
 const BATTERY_SIM_STEP = 1;              /* percent lost per simulated tick  */
 const BATTERY_SIM_INTERVAL = 4000;       /* ms between simulated ticks       */
@@ -978,7 +996,9 @@ let warnedCritical = false;
 */
 const renderBattery = () => {
     if (batteryLevelValue === null) return;
-    const level = Math.max(0, Math.min(100, Math.round(batteryLevelValue)));
+    /* Clamp the visible level to 1-100: the battery may drain but must
+       never display or drop to 0%. */
+    const level = Math.max(1, Math.min(100, Math.round(batteryLevelValue)));
 
     batteryLevel.style.width = `${level}%`;
     batteryPercentage.innerText = `${level}%`;
@@ -1014,7 +1034,8 @@ const renderBattery = () => {
 * @author Cesar
 */
 const setBatteryState = (levelFraction, charging) => {
-    batteryLevelValue = levelFraction * 100;
+    /* Clamp to 1-100 so a real (or simulated) reading can never show 0%. */
+    batteryLevelValue = Math.max(1, Math.min(100, levelFraction * 100));
     batteryCharging = Boolean(charging);
     renderBattery();
 };
@@ -1061,8 +1082,9 @@ const startBatterySimulation = () => {
     renderBattery();
     batterySimTimer = setInterval(() => {
         if (document.hidden) return;
-        if (!batteryCharging && batteryLevelValue > 0) {
-            batteryLevelValue = Math.max(0, batteryLevelValue - BATTERY_SIM_STEP);
+        /* Drain normally, but floor at 1% — never reach 0%. */
+        if (!batteryCharging && batteryLevelValue > BATTERY_MIN_LEVEL) {
+            batteryLevelValue = Math.max(BATTERY_MIN_LEVEL, batteryLevelValue - BATTERY_SIM_STEP);
             renderBattery();
         }
     }, BATTERY_SIM_INTERVAL);
