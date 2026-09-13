@@ -570,6 +570,8 @@ const turnOff = () => {
     calculator.update();
     /* Powered off: hide the battery indicator and stop its updates. */
     hideBattery();
+    /* Powered off: dismiss any running toast immediately (stops its countdown). */
+    hideToast();
 };
 
 /**
@@ -1124,20 +1126,26 @@ const startBatterySimulation = () => {
 /**
 * DOCU: Hides the battery indicator (when the calculator powers off) and <br>
 * pauses the simulated drain so the percentage stays frozen at its last <br>
-* value. Powering back on resumes the drain from that exact percentage. <br>
+* value. Powering back on resumes the drain from that percentage. Any <br>
+* in-progress charging is NOT cancelled: it keeps running while off and <br>
+* the LCD charging screen shows the live progress until full. <br>
 * Last Updated Date: September 14, 2026 <br>
 * @function hideBattery
 * @author Cesar
 */
 const hideBattery = () => {
     batteryStatus.classList.remove('show');
-    /* Powering off also cancels any in-progress charging: stop the charge
-       timer so charging never keeps running while the device is off. The
-       toggle itself stays visible — it can be used again at any time. */
-    stopCharging();
+    /* Powering off does NOT cancel an in-progress charging session: the
+       charge is still physically connected, so charging keeps running
+       while the device is off. The dedicated charging screen on the LCD
+       (re-rendered below) reports the live progress instead. The charge
+       timer is fully independent of the drain timer, so it continues
+       ticking here and auto-stops at 100% as usual. */
+    if (batteryCharging) renderBattery();
     /* Powering off stops the battery drain: clear the simulation timer so
-       the percentage freezes where it is. The stored batteryLevelValue is
-       kept, so re-powering resumes the drain from this exact level. */
+       the percentage freezes where it is (charging still advances it via
+       the charge timer). The stored batteryLevelValue is kept, so
+       re-powering resumes the drain from the exact current level. */
     if (batterySimTimer) {
         clearInterval(batterySimTimer);
         batterySimTimer = null;
