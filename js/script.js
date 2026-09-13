@@ -1042,9 +1042,10 @@ const setBatteryState = (levelFraction, charging) => {
 
 /**
 * DOCU: Reveals the battery indicator and starts keeping it up to date. <br>
-* Prefers the real Battery Status API; otherwise starts the simulated <br>
-* drain timer so the percentage visibly changes over time. <br>
-* Last Updated Date: September 12, 2026 <br>
+* Seeds the simulated battery from the real Battery Status API when it is <br>
+* available, then always runs the simulated drain so the percentage <br>
+* visibly changes over time on every platform, web included. <br>
+* Last Updated Date: September 14, 2026 <br>
 * @function showBattery
 * @author Cesar
 */
@@ -1056,12 +1057,16 @@ const showBattery = () => {
         renderBattery();
         return;
     }
+    /* Seed the simulated battery from the real device battery when the
+       Battery Status API is available (one-time read, skipped while the
+       device is charging), then run the simulated drain everywhere so the
+       percentage visibly decreases on every platform, web included. */
     if (navigator.getBattery) {
         navigator.getBattery().then(battery => {
-            const sync = () => setBatteryState(battery.level, battery.charging);
-            sync();
-            battery.addEventListener('levelchange', sync);
-            battery.addEventListener('chargingchange', sync);
+            if (batteryLevelValue === null && !battery.charging) {
+                setBatteryState(battery.level, false);
+            }
+            startBatterySimulation();
         }).catch(() => startBatterySimulation());
     } else {
         startBatterySimulation();
