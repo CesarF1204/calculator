@@ -370,15 +370,16 @@ let calculatorOn = false;
 /**
  * DOCU: These variables drive the toast (auto-dismiss notification) countdown.
  * The toast lasts for TOAST_DURATION ms unless the user dismisses it or pauses
- * it. Progress is driven per-frame so it stops while the toast is hovered or
- * focused, giving people enough time to read the message. <br>
- * Last Updated Date: September 12, 2026 <br>
+ * it. Progress is driven on an interval so it stops while the toast is hovered
+ * or focused, giving people enough time to read the message, and keeps running
+ * even when the tab is hidden or inactive. <br>
+ * Last Updated Date: September 14, 2026 <br>
  * @type {number|boolean}
  * @author Cesar
  */
 const TOAST_DURATION = 3000;
 
-let toastRAF = null;     /* requestAnimationFrame id driving the progress bar      */
+let toastTimer = null;   /* interval id driving the progress bar                  */
 let toastStart = 0;      /* timestamp (ms) when the current visible span began    */
 let toastElapsed = 0;    /* ms already elapsed on the toast's lifetime            */
 let toastPaused = false; /* true while the toast is hovered/focused               */
@@ -405,20 +406,21 @@ const keyButtons = [
 /**
 * DOCU: This function keeps the countdown progress bar in sync with the time
 * left on the toast. It computes how many milliseconds remain and writes that
-* as a width percentage on the progress bar. <br>
-* Last Updated Date: September 12, 2026 <br>
+* as a width percentage on the progress bar. Elapsed time is derived from
+* absolute timestamps, so the countdown stays accurate even while the tab is
+* hidden or inactive (interval timers keep firing in background tabs, unlike
+* requestAnimationFrame which is suspended). <br>
+* Last Updated Date: September 14, 2026 <br>
 * @function updateToastProgress
 * @returns {number} the remaining time in milliseconds
 * @author Cesar
 */
 const updateToastProgress = () => {
     const now = performance.now();
-    /* Clamp the frame delta: rAF stops while the tab is suspended, so the
-       first frame back would otherwise apply the whole suspension at once
-       and the toast would vanish in a single frame. Clamping keeps the
-       countdown resuming smoothly from where it visually was. */
-    const delta = Math.min(now - toastStart, 250);
-    toastElapsed = Math.min(TOAST_DURATION, toastElapsed + delta);
+    /* No delta clamping here: the countdown must reflect real elapsed time so
+       the toast finishes on schedule even when background tabs throttle the
+       interval down to roughly one tick per second. */
+    toastElapsed = Math.min(TOAST_DURATION, toastElapsed + (now - toastStart));
     toastStart = now;
     const remaining = Math.max(0, TOAST_DURATION - toastElapsed);
     toastProgress.style.width = `${(remaining / TOAST_DURATION) * 100}%`;
@@ -426,32 +428,41 @@ const updateToastProgress = () => {
 };
 
 /**
-* DOCU: This function requests the next animation frame until there is no time
+* DOCU: This function ticks the countdown on an interval until there is no time
 * left or the toast is paused. When the countdown reaches zero it hides the
-* toast automatically. <br>
-* Last Updated Date: September 12, 2026 <br>
+* toast automatically. An interval is used instead of requestAnimationFrame
+* because rAF is suspended in hidden/inactive tabs, which would freeze the
+* countdown; intervals keep firing in the background. <br>
+* Last Updated Date: September 14, 2026 <br>
 * @function driveToastProgress
 * @author Cesar
 */
 const driveToastProgress = () => {
+    stopToastProgress();
     const remaining = updateToastProgress();
-    if (remaining > 0 && !toastPaused) {
-        toastRAF = requestAnimationFrame(driveToastProgress);
-    } else if (remaining === 0) {
+    if (remaining === 0) {
         hideToast();
+        return;
     }
+    toastTimer = setInterval(() => {
+        if (toastPaused) return;
+        if (updateToastProgress() === 0) {
+            stopToastProgress();
+            hideToast();
+        }
+    }, 50);
 };
 
 /**
-* DOCU: This function stops the per-frame loop and cancels the pending
-* auto-hide timer. It is called before hiding or pausing the toast. <br>
-* Last Updated Date: September 12, 2026 <br>
+* DOCU: This function stops the countdown interval. It is called before hiding
+* or pausing the toast. <br>
+* Last Updated Date: September 14, 2026 <br>
 * @function stopToastProgress
 * @author Cesar
 */
 const stopToastProgress = () => {
-    if (toastRAF) cancelAnimationFrame(toastRAF);
-    toastRAF = null;
+    if (toastTimer) clearInterval(toastTimer);
+    toastTimer = null;
 };
 
 /**
@@ -1012,8 +1023,8 @@ const renderBattery = () => {
     batteryLevel.style.width = `${level}%`;
     batteryPercentage.innerText = `${level}%`;
 
-    const isLow = level < BATTERY_LOW_THRESHOLD;
-    const isCritical = level < BATTERY_CRITICAL_THRESHOLD;
+    const isLow = level <= BATTERY_LOW_THRESHOLD;
+    const isCritical = level <= BATTERY_CRITICAL_THRESHOLD;
 
     batteryStatus.classList.toggle('battery-low', isLow && !isCritical);
     batteryStatus.classList.toggle('battery-critical', isCritical);
@@ -1100,9 +1111,10 @@ const showBattery = () => {
 
 /**
 * DOCU: Starts the fallback simulated drain: begins at a healthy level and <br>
-* loses BATTERY_SIM_STEP percent every BATTERY_SIM_INTERVAL ms, pausing <br>
-* while the page is hidden so the drain never jumps after returning. <br>
-* Last Updated Date: September 12, 2026 <br>
+* loses BATTERY_SIM_STEP percent every BATTERY_SIM_INTERVAL ms, even <br>
+* while the page is hidden — draining only pauses when the calculator <br>
+* is powered off. <br>
+* Last Updated Date: September 14, 2026 <br>
 * @function startBatterySimulation
 * @author Cesar
 */
@@ -1114,7 +1126,6 @@ const startBatterySimulation = () => {
     if (batteryLevelValue === null) batteryLevelValue = BATTERY_SIM_START;
     renderBattery();
     batterySimTimer = setInterval(() => {
-        if (document.hidden) return;
         /* Drain normally, but floor at 1% — never reach 0%. */
         if (!batteryCharging && batteryLevelValue > BATTERY_MIN_LEVEL) {
             batteryLevelValue = Math.max(BATTERY_MIN_LEVEL, batteryLevelValue - BATTERY_SIM_STEP);
@@ -1183,7 +1194,6 @@ const startCharging = () => {
        shimmering pill while ON) appears without waiting for the first tick. */
     renderBattery();
     batteryChargeTimer = setInterval(() => {
-        if (document.hidden) return;
         batteryLevelValue = Math.min(BATTERY_FULL_LEVEL, batteryLevelValue + BATTERY_SIM_STEP);
         renderBattery();
         /* Battery full: turn charging off, notify, and resume draining.

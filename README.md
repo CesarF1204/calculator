@@ -13,11 +13,11 @@ A physical-looking, mobile-first calculator built with **HTML, CSS (Bootstrap 5 
   - Sign toggle (`±`) — flips a positive value to negative and vice versa (zero is left unchanged)
   - Chained calculations (e.g. `5 + 3 + 2` evaluates intermediate results)
   - `AC` (all clear) and `DEL` (backspace) — `DEL` deletes one character at a time, and once the current input is fully deleted it pulls the pending upper value down so deletion can continue
-- **Battery indicator** — A battery icon with live percentage in the upper-right while the calculator is ON. The battery is simulated (starts at 100%, or seeded one-time from the real device battery when the **Battery Status API** is available, loses 1% every 10s, pauses while the tab is hidden, and never displays below 1%) and freezes while the calculator is OFF, resuming from the same percentage when powered back ON. Below **20%** the icon turns amber; below **10%** it turns red with a pulse — each threshold warns once via the toast.
+- **Battery indicator** — A battery icon with live percentage in the upper-right while the calculator is ON. The battery is simulated (starts at 100%, or seeded one-time from the real device battery when the **Battery Status API** is available, loses 1% every 10s, pauses while the tab is hidden, and never displays below 1%) and freezes while the calculator is OFF, resuming from the same percentage when powered back ON. When the battery percentage is at **20%** the icon turns amber; and when it's **10%** it turns red with a pulse — each threshold warns once via the toast.
 - **Charging system** — A round lightning-bolt **charge button** sits on the crown at the top-right of the "CALCULATOR PRO MAX" title row, and works **even while the calculator is OFF**. Clicking it toggles charging:
   - While **OFF**, a dedicated **LCD charging screen** fades in over the display showing an oversized animated battery icon and the live percentage; the power switch stays visible and clickable on top of it.
   - While **ON**, the battery pill fills with a steady green glow and a pulsing lightning bolt appears inside the shell.
-  - Charging adds 1% every 4 seconds (paused while the tab is hidden), drains are paused while charging, and reaching **100%** auto-stops charging with a "battery full" toast before normal draining resumes.
+  - Charging adds 1% every 10 seconds (paused while the tab is hidden), drains are paused while charging, and reaching **100%** auto-stops charging with a "battery full" toast before normal draining resumes.
   - If the battery is already full, the button only shows a "fully charged" toast and does not start charging.
 - **Readable output** — Results are formatted with thousands separators, long values shrink to fit in place (no horizontal scrolling), and pending intermediate values are shown in a smaller secondary display.
 - **3D flip & branded back** — A button beneath the calculator flips the device 180° to reveal a metallic-silver back panel with an Apple-style logo and "MADE BY CES · YEAR 2026" fine print; a second button flips it back. Works in modern browsers, with dedicated WebKit/Safari 3D fixes.
@@ -44,7 +44,7 @@ The calculator has two states, tracked by the `calculatorOn` flag in `js/script.
 
 ### Charging model
 
-The battery is a single simulated value shared by the ON and OFF states. `batteryCharging` and the drain flag are mutually exclusive: while charging, the drain tick is skipped and a dedicated timer adds 1% every 4 seconds; only one charging timer can ever exist. Reaching 100% auto-stops charging with a toast, and normal draining resumes automatically (while OFF, draining stays paused until the calculator is powered back on).
+The battery is a single simulated value shared by the ON and OFF states. `batteryCharging` and the drain flag are mutually exclusive: while charging, the drain tick is skipped and a dedicated timer adds 1% every 10 seconds; only one charging timer can ever exist. Reaching 100% auto-stops charging with a toast, and normal draining resumes automatically (while OFF, draining stays paused until the calculator is powered back on).
 
 ## Getting Started
 

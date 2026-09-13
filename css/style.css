@@ -772,7 +772,7 @@ body {
 }
 
 /* Countdown progress bar pinned to the bottom of the toast. Width is driven
-   per-frame from JS (100% -> 0%); kept in custom CSS (not Bootstrap w-100)
+   from JS on an interval (100% -> 0%); kept in custom CSS (not Bootstrap w-100)
    so the JS width is never overridden. overflow-hidden on the toast clips
    the bar to the rounded corners. */
 .toast-progress {
