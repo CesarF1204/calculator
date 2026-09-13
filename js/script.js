@@ -1169,6 +1169,8 @@ const startCharging = () => {
     batteryCharging = true;
     chargeButton.classList.add('active');
     chargeButton.setAttribute('aria-pressed', 'true');
+    chargeButton.setAttribute('aria-label', 'Toggle charging off');
+    chargeButton.setAttribute('title', 'Toggle charging off');
     /* Render immediately so the charging UI (screen overlay while OFF,
        shimmering pill while ON) appears without waiting for the first tick. */
     renderBattery();
@@ -1181,9 +1183,7 @@ const startCharging = () => {
            resume until the calculator is powered on again. */
         if (batteryLevelValue >= BATTERY_FULL_LEVEL) {
             stopCharging();
-            showToast(calculatorOn
-                ? 'Battery is at full charge (100%).\nCharging will be turned off and battery is now draining.'
-                : 'Battery is at full charge (100%).\nCharging has been turned off.');
+            showToast('Battery is at full charge (100%).\nCharging has been turned off.');
         }
     }, BATTERY_SIM_INTERVAL);
 };
@@ -1204,6 +1204,8 @@ const stopCharging = () => {
     batteryCharging = false;
     chargeButton.classList.remove('active');
     chargeButton.setAttribute('aria-pressed', 'false');
+    chargeButton.setAttribute('aria-label', 'Toggle charging on');
+    chargeButton.setAttribute('title', 'Toggle charging on');
     /* Re-render so every charging visual is removed at once: the battery
        pill drops its shimmer state and the LCD charging screen fades out. */
     renderBattery();

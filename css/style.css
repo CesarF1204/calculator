@@ -638,18 +638,18 @@ body {
    the battery pill). Shown only while powered ON, like the indicator.
    ===================================================================== */
 
-/* Pin: vertically centered exactly on the "CALCULATOR PRO MAX" brand
-   strip. The title is pinned at top: clamp(11px, 2.6vw, 15px) with a
-   2.2 line-height at .56rem (~19.7px line box). Its center sits
-   clampTop + ~9.85px; centering the 1.55rem (24.8px) button on that
-   point gives clampTop − ~2.5px (0.16rem). Horizontally the button is
-   flush with the casing's right padding edge — the right corner of the
-   title row, mirroring the centered title's left/right symmetry. */
+/* Pin: the button's CENTER sits inside the bottom padding band of the
+   casing, on the casing's horizontal centerline. Both offsets use the
+   same responsive clamps the grid's paddings use, so the button keeps
+   the exact same relative spot on the casing at every viewport size —
+   desktop and mobile alike (fixed rem offsets would drift left and
+   off the padding band as the casing narrows on small screens). */
 /* Always visible — the charging toggle works even while the device is OFF. */
 .charge-button {
+    --charge-size: clamp(2rem, 4.5vw, 1.6rem);
     position: absolute;
-    top: calc(clamp(11px, 2.6vw, 15px) - 0.16rem);
-    right: clamp(15px, 4vw, 22px);
+    right: calc(50% - (var(--charge-size) / 2));
+    bottom: calc(clamp(6px, 0vw, 0px) - (var(--charge-size) / 2));
     z-index: 2;
     /* Standalone reset: none of the key material applies to this toggle. */
     appearance: none;
@@ -670,7 +670,7 @@ body {
 @media (hover: hover) {
     .charge-button:hover .charge-button-inner {
         color: #fff;
-        filter: brightness(1.25);
+        filter: brightness(1.15);
     }
 }
 
@@ -678,10 +678,26 @@ body {
     box-shadow: inset 0 1px 3px rgba(0,0,0,.45), 0 0 0 2px rgba(85,194,74,.8);
 }
 
-/* Circular bolt button: same recessed dark pill material as the battery. */
+/* Invisible expanded hit area: keeps a comfortable ~44px touch target on
+   small screens where the scaled-down circle alone would be too tiny,
+   without shifting the visible circle's position. Expansion is biased
+   away from the adjacent battery pill on the right so taps there are
+   never misrouted to the charge toggle. */
+.charge-button::after {
+    content: "";
+    position: absolute;
+    top: -0.7rem;
+    right: -0.3rem;
+    bottom: -0.7rem;
+    left: -0.7rem;
+    border-radius: 50%;
+}
+
+/* Circular bolt button: same recessed dark pill material as the battery.
+   Size follows --charge-size so it scales fluidly across breakpoints. */
 .charge-button-inner {
-    width: 1.55rem;
-    height: 1.55rem;
+    width: var(--charge-size);
+    height: var(--charge-size);
     border-radius: 50%;
     color: rgba(235,238,242,.85);
     background: linear-gradient(180deg, rgba(0,0,0,.4), rgba(0,0,0,.25));
@@ -690,13 +706,21 @@ body {
     transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease, filter 200ms ease;
 }
 
+/* Bolt glyph scales with the circle (fixed 12px attribute in HTML would
+   stop tracking the responsive diameter). 62% keeps the same visual ratio
+   the original 12px bolt had inside a 19.4px circle. */
+.charge-button-inner svg {
+    width: 62%;
+    height: 62%;
+}
+
 /* ACTIVE (charging): green like the ON power switch, with a soft glow
    pulse so the charging state is unmistakable at a glance. */
 .charge-button.active .charge-button-inner {
     color: #eaffea;
     background: linear-gradient(180deg, #3d9c34 0%, #55c24a 100%);
     border-color: rgba(0,0,0,.5);
-    box-shadow: inset 0 1px 3px rgba(0,0,0,.35), 0 0 6px rgba(85,194,74,.7);
+    /* box-shadow: inset 0 1px 3px rgba(0,0,0,.35), 0 0 6px rgba(85,194,74,.7); */
     animation: charge-pulse 1.4s ease-in-out infinite;
 }
 
