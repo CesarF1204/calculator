@@ -973,17 +973,24 @@ window.addEventListener('resize', () => calculator.update());
 const batteryStatus = document.getElementById('battery-status');
 const batteryLevel = document.getElementById('battery-level');
 const batteryPercentage = document.getElementById('battery-percentage');
+const chargingScreen = document.getElementById('charging-screen');
+const chargingScreenLevel = document.getElementById('charging-screen-level');
+const chargingScreenPercentage = document.getElementById('charging-screen-percentage');
 
 const BATTERY_LOW_THRESHOLD = 20;        /* percent                          */
 const BATTERY_CRITICAL_THRESHOLD = 10;   /* percent                          */
 const BATTERY_MIN_LEVEL = 1;             /* percent — never displayed lower  */
-const BATTERY_SIM_START = 100;            /* simulated starting level, %      */
+const BATTERY_SIM_START = 100;           /* simulated starting level, %      */
 const BATTERY_SIM_STEP = 1;              /* percent lost per simulated tick  */
-const BATTERY_SIM_INTERVAL = 10000;       /* drain the battery every 10 seconds */
+const BATTERY_SIM_INTERVAL = 10000;      /* drain/charge the battery every 10 seconds */
+const BATTERY_FULL_LEVEL = 100;          /* charging stops at this level     */
+
+const chargeButton = document.getElementById('charge-button');
 
 let batteryLevelValue = null;    /* 0-100, null until first reading */
 let batteryCharging = false;
 let batterySimTimer = null;      /* fallback drain timer            */
+let batteryChargeTimer = null;   /* charging timer (1% per tick)    */
 let warnedLow = false;           /* toast shown only once per event */
 let warnedCritical = false;
 
@@ -1008,6 +1015,27 @@ const renderBattery = () => {
 
     batteryStatus.classList.toggle('battery-low', isLow && !isCritical);
     batteryStatus.classList.toggle('battery-critical', isCritical);
+    /* While charging, the fill glows green regardless of level. */
+    batteryStatus.classList.toggle('battery-charging', batteryCharging);
+
+    /* Sync the dedicated charging screen: it only appears while charging
+       with the device OFF (when ON, the battery pill reports the state).
+       Percentage + fill update here in real time on every tick. */
+    const chargingScreenVisible = batteryCharging && !calculatorOn;
+    chargingScreen.classList.toggle('show', chargingScreenVisible);
+    if (chargingScreenVisible) {
+        chargingScreenLevel.style.width = `${level}%`;
+        chargingScreenPercentage.innerText = `${level}%`;
+    }
+
+    /* While charging, low/critical warnings are suppressed entirely and
+       the flags are reset so the warnings can fire again normally once
+       charging stops and the battery starts dropping again. */
+    if (batteryCharging) {
+        warnedLow = false;
+        warnedCritical = false;
+        return;
+    }
 
     /* One-time toast warnings as the battery drops past each threshold. */
     if (isCritical && !warnedCritical) {
@@ -1016,11 +1044,6 @@ const renderBattery = () => {
     } else if (isLow && !warnedLow) {
         warnedLow = true;
         showToast('Battery low.\nPlease charge your device soon.');
-    }
-    /* Charging resets the warnings so they can fire again if it drops. */
-    if (batteryCharging) {
-        warnedLow = false;
-        warnedCritical = false;
     }
 };
 
@@ -1108,6 +1131,10 @@ const startBatterySimulation = () => {
 */
 const hideBattery = () => {
     batteryStatus.classList.remove('show');
+    /* Powering off also cancels any in-progress charging: stop the charge
+       timer so charging never keeps running while the device is off. The
+       toggle itself stays visible — it can be used again at any time. */
+    stopCharging();
     /* Powering off stops the battery drain: clear the simulation timer so
        the percentage freezes where it is. The stored batteryLevelValue is
        kept, so re-powering resumes the drain from this exact level. */
@@ -1116,6 +1143,107 @@ const hideBattery = () => {
         batterySimTimer = null;
     }
 };
+
+/* ------------------------------------------------------------------
+   Charging behaviour — mutually exclusive with draining.
+   - While charging, the drain tick is skipped (batteryCharging flag)
+     and a dedicated timer adds 1% every BATTERY_SIM_INTERVAL ms.
+   - Only one charging timer can ever exist: startCharging() bails if
+     batteryChargeTimer is already set, stopCharging() always clears it.
+   - Reaching 100% auto-stops charging with a toast, then normal
+     draining resumes automatically.
+   ------------------------------------------------------------------ */
+
+/**
+* DOCU: Starts charging the simulated battery: adds BATTERY_SIM_STEP <br>
+* percent every BATTERY_SIM_INTERVAL ms until the battery is full. <br>
+* The drain process is paused while charging (mutual exclusion), and a <br>
+* guard ensures only one charging timer can ever run at a time. <br>
+* Last Updated Date: September 14, 2026 <br>
+* @function startCharging
+* @author Cesar
+*/
+const startCharging = () => {
+    /* Guard: never start a second charging process while one is running. */
+    if (batteryChargeTimer) return;
+    batteryCharging = true;
+    chargeButton.classList.add('active');
+    chargeButton.setAttribute('aria-pressed', 'true');
+    /* Render immediately so the charging UI (screen overlay while OFF,
+       shimmering pill while ON) appears without waiting for the first tick. */
+    renderBattery();
+    batteryChargeTimer = setInterval(() => {
+        if (document.hidden) return;
+        batteryLevelValue = Math.min(BATTERY_FULL_LEVEL, batteryLevelValue + BATTERY_SIM_STEP);
+        renderBattery();
+        /* Battery full: turn charging off, notify, and resume draining.
+           While OFF the drain timer isn't running, so draining does NOT
+           resume until the calculator is powered on again. */
+        if (batteryLevelValue >= BATTERY_FULL_LEVEL) {
+            stopCharging();
+            showToast(calculatorOn
+                ? 'Battery is at full charge (100%).\nCharging will be turned off and battery is now draining.'
+                : 'Battery is at full charge (100%).\nCharging has been turned off.');
+        }
+    }, BATTERY_SIM_INTERVAL);
+};
+
+/**
+* DOCU: Stops the charging process immediately and clears its timer. <br>
+* Normal battery draining resumes automatically because the drain timer <br>
+* is never cancelled — it simply skips ticks while batteryCharging is true. <br>
+* Last Updated Date: September 14, 2026 <br>
+* @function stopCharging
+* @author Cesar
+*/
+const stopCharging = () => {
+    if (batteryChargeTimer) {
+        clearInterval(batteryChargeTimer);
+        batteryChargeTimer = null;
+    }
+    batteryCharging = false;
+    chargeButton.classList.remove('active');
+    chargeButton.setAttribute('aria-pressed', 'false');
+    /* Re-render so every charging visual is removed at once: the battery
+       pill drops its shimmer state and the LCD charging screen fades out. */
+    renderBattery();
+};
+
+/**
+* DOCU: Handles clicks on the charging button. If the battery is already <br>
+* full, only a "fully charged" toast is shown and charging does not start. <br>
+* Otherwise it toggles charging: activating starts the charge process, and <br>
+* deactivating stops it and immediately resumes normal battery draining. <br>
+* Last Updated Date: September 14, 2026 <br>
+* @function toggleCharging
+* @author Cesar
+*/
+const toggleCharging = () => {
+    /* First-ever use before the calculator was ever powered on: seed the
+       simulated battery at its starting level so charging still works. */
+    if (batteryLevelValue === null) batteryLevelValue = BATTERY_SIM_START;
+    /* Already at 100%: fully charged — do not activate charging. */
+    if (batteryLevelValue >= BATTERY_FULL_LEVEL) {
+        showToast('Battery is fully charged.\nCharging is not needed.');
+        return;
+    }
+    /* Toggle: stop charging to resume draining, or start charging. */
+    if (batteryCharging) {
+        stopCharging();
+        /* While OFF the drain timer isn't running, so the battery is not
+           draining after charging stops — use a dedicated message. */
+        showToast(calculatorOn
+            ? 'Charging stopped.\nBattery is now draining.'
+            : 'Charging stopped.');
+    } else {
+        startCharging();
+        /* While OFF the dedicated charging screen animation already makes
+           the state obvious, so no "charging started" toast is needed. */
+        if (calculatorOn) showToast('Charging started.');
+    }
+};
+
+chargeButton.addEventListener('click', toggleCharging);
 
 /**
  * DOCU: This call sets the default state of the calculator to OFF. <br>

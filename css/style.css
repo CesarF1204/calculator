@@ -118,7 +118,9 @@ body {
     z-index: 0;
 }
 
-.calculator-grid > button {
+/* :not(#charge-button) — the charging toggle is a direct child of the
+   grid but is NOT a key: it keeps its own circular casing styling below. */
+.calculator-grid > button:not(#charge-button) {
     /* Bootstrap gives weight/select via utilities; custom keeps the 3D key.
        Bootstrap .btn is NOT used: it would fight the fixed key grid with its
        own padding/line-height/focus-ring. border-width stays custom so the
@@ -146,14 +148,14 @@ body {
 
 /* Only lift on hover for devices that can actually hover (mouse/trackpad) */
 @media (hover: hover) {
-    .calculator-grid > button:hover {
+    .calculator-grid > button:not(#charge-button):hover {
         filter: brightness(1.045);
     }
 }
 
 /* Pressed: the whole key travels down like real plastic. */
-.calculator-grid > button:active,
-.calculator-grid > button.is-pressed {
+.calculator-grid > button:not(#charge-button):active,
+.calculator-grid > button:not(#charge-button).is-pressed {
     transform: translateY(2px);
     box-shadow:
         inset 0 1px 3px rgba(0,0,0,.22),
@@ -472,6 +474,241 @@ body {
 @media (prefers-reduced-motion: reduce) {
     .battery-status.battery-critical { animation: none; }
 }
+
+/* Charging (ON state): the fill is a steady green glow — no animation —
+   and a lightning bolt appears inside the shell so it reads as a
+   "charging" battery icon at a glance. */
+.battery-status.battery-charging .battery-level {
+    background: linear-gradient(180deg, #55c24a 0%, #3d9c34 100%);
+    box-shadow: 0 0 6px rgba(85,194,74,.8);
+}
+.battery-status.battery-charging {
+    color: #8fe37f;
+}
+
+/* Lightning bolt drawn inside the shell while charging (shell has
+   overflow:hidden, so the bolt stays clipped to the battery body).
+   Gentle opacity pulse draws the eye without being noisy. */
+.battery-status.battery-charging .battery-shell::after {
+    content: "";
+    position: absolute;
+    top: 8%;
+    left: 24%;
+    width: 52%;
+    height: 84%;
+    background: #d7ffc9;
+    filter: drop-shadow(0 0 2px rgba(20, 40, 15, .9));
+    clip-path: polygon(54% 0%, 18% 55%, 45% 55%, 40% 100%, 82% 42%, 54% 42%);
+    animation: bolt-pulse 1.1s ease-in-out infinite;
+}
+
+@keyframes bolt-pulse {
+    0%, 100% { opacity: .75; }
+    50%      { opacity: 1; }
+}
+
+@keyframes charge-shimmer {
+    from { background-position: 0% 0; }
+    to   { background-position: 200% 0; }
+}
+
+/* =====================================================================
+   Dedicated charging screen (LCD overlay, shown only while charging
+   AND the calculator is OFF — when ON, the battery pill reports state)
+   ===================================================================== */
+
+/* Fills the recessed LCD, inheriting its radius. Fades/slides in.
+   z-index 1 keeps it above the LCD sheen but BELOW the power switch
+   (z-index 2), so the ON/OFF toggle stays visible and clickable while
+   the charging screen is up. */
+.charging-screen {
+    position: absolute;
+    inset: 0;
+    z-index: 1;
+    border-radius: inherit;
+    background:
+        radial-gradient(120% 90% at 50% 0%, rgba(85,194,74,.10) 0%, rgba(85,194,74,0) 55%),
+        linear-gradient(180deg, #0d120f 0%, #161e1a 55%, #101613 100%);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 300ms ease, visibility 300ms ease;
+}
+
+/* Visible while charging with the device OFF (class toggled from JS). */
+.charging-screen.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Oversized battery icon: same shell/cap language as the pill, scaled up. */
+.charging-battery-shell {
+    position: relative;
+    display: inline-block;
+    width: 4.2rem;
+    height: 1.9rem;
+    padding: 3px;
+    border: 2px solid rgba(143,227,127,.9);
+    border-radius: 6px;
+    background: rgba(0,0,0,.45);
+    overflow: hidden;
+}
+
+.charging-battery-cap {
+    display: inline-block;
+    width: 0.32rem;
+    height: 0.9rem;
+    margin-left: 3px;
+    border-radius: 0 3px 3px 0;
+    background: rgba(143,227,127,.9);
+}
+
+/* Fill: width set from JS each tick; shimmers green while charging. */
+.charging-battery-level {
+    display: block;
+    height: 100%;
+    width: 0%;
+    border-radius: 3px;
+    background: linear-gradient(90deg, #3d9c34 0%, #55c24a 35%, #8fe37f 50%, #55c24a 65%, #3d9c34 100%);
+    background-size: 200% 100%;
+    animation: charge-shimmer 1.6s linear infinite;
+    box-shadow: 0 0 8px rgba(85,194,74,.75);
+    transition: width 300ms ease;
+}
+
+/* Lightning bolt inside the oversized shell (clipped by overflow:hidden):
+    makes it read unmistakably as a "charging" battery icon. */
+.charging-battery-shell::after {
+    content: "";
+    position: absolute;
+    top: 6%;
+    left: 28%;
+    width: 44%;
+    height: 88%;
+    background: #d7ffc9;
+    filter: drop-shadow(0 0 3px rgba(20, 40, 15, .9));
+    clip-path: polygon(54% 0%, 18% 55%, 45% 55%, 40% 100%, 82% 42%, 54% 42%);
+    animation: bolt-pulse 1.1s ease-in-out infinite;
+}
+
+/* Whole icon breathes with a green glow so charging is unmistakable. */
+.charging-battery {
+    animation: charge-glow 1.4s ease-in-out infinite;
+}
+
+@keyframes charge-glow {
+    0%, 100% { filter: drop-shadow(0 0 3px rgba(85,194,74,.45)); }
+    50%      { filter: drop-shadow(0 0 11px rgba(85,194,74,.95)); }
+}
+
+/* Percentage: same display sizing/color family as the current operand,
+   green-tinted so it reads as "charging", not normal operation. */
+.charging-screen-percentage {
+    font-variant-numeric: tabular-nums;
+    font-size: clamp(1.9rem, 7.5vw, 2.4rem);
+    line-height: 1.2;
+    color: #c9f5bd;
+    text-shadow: 0 0 14px rgba(150,255,150,.35);
+    animation: charge-text-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes charge-text-pulse {
+    0%, 100% { text-shadow: 0 0 10px rgba(150,255,150,.25); }
+    50%      { text-shadow: 0 0 20px rgba(150,255,150,.55); }
+}
+
+/* Etched-style label, matching the "CALCULATOR PRO MAX" strip treatment. */
+.charging-screen-label {
+    font-size: .56rem;
+    line-height: 2.2;
+    letter-spacing: .28em;
+    text-indent: .28em;
+    color: #8fe37f;
+    opacity: .85;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .charging-battery,
+    .charging-screen-percentage,
+    .charging-battery-level,
+    .battery-status.battery-charging .battery-shell::after { animation: none; }
+}
+
+/* =====================================================================
+   Charging toggle button (upper-right, on the casing border, next to
+   the battery pill). Shown only while powered ON, like the indicator.
+   ===================================================================== */
+
+/* Pin: vertically centered exactly on the "CALCULATOR PRO MAX" brand
+   strip. The title is pinned at top: clamp(11px, 2.6vw, 15px) with a
+   2.2 line-height at .56rem (~19.7px line box). Its center sits
+   clampTop + ~9.85px; centering the 1.55rem (24.8px) button on that
+   point gives clampTop − ~2.5px (0.16rem). Horizontally the button is
+   flush with the casing's right padding edge — the right corner of the
+   title row, mirroring the centered title's left/right symmetry. */
+/* Always visible — the charging toggle works even while the device is OFF. */
+.charge-button {
+    position: absolute;
+    top: calc(clamp(11px, 2.6vw, 15px) - 0.16rem);
+    right: clamp(15px, 4vw, 22px);
+    z-index: 2;
+    /* Standalone reset: none of the key material applies to this toggle. */
+    appearance: none;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    line-height: 0;
+    cursor: pointer;
+    outline: none;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+    transition: opacity 220ms ease, visibility 220ms ease;
+}
+
+/* Hover/focus feedback: brighten the bolt, only for hover-capable devices. */
+@media (hover: hover) {
+    .charge-button:hover .charge-button-inner {
+        color: #fff;
+        filter: brightness(1.25);
+    }
+}
+
+.charge-button:focus-visible .charge-button-inner {
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.45), 0 0 0 2px rgba(85,194,74,.8);
+}
+
+/* Circular bolt button: same recessed dark pill material as the battery. */
+.charge-button-inner {
+    width: 1.55rem;
+    height: 1.55rem;
+    border-radius: 50%;
+    color: rgba(235,238,242,.85);
+    background: linear-gradient(180deg, rgba(0,0,0,.4), rgba(0,0,0,.25));
+    border: 1px solid rgba(0,0,0,.55);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.45), 0 1px 0 rgba(255,255,255,.08);
+    transition: background 200ms ease, color 200ms ease, box-shadow 200ms ease, filter 200ms ease;
+}
+
+/* ACTIVE (charging): green like the ON power switch, with a soft glow
+   pulse so the charging state is unmistakable at a glance. */
+.charge-button.active .charge-button-inner {
+    color: #eaffea;
+    background: linear-gradient(180deg, #3d9c34 0%, #55c24a 100%);
+    border-color: rgba(0,0,0,.5);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,.35), 0 0 6px rgba(85,194,74,.7);
+    animation: charge-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes charge-pulse {
+    0%, 100% { box-shadow: inset 0 1px 3px rgba(0,0,0,.35), 0 0 4px rgba(85,194,74,.5); }
+    50%      { box-shadow: inset 0 1px 3px rgba(0,0,0,.35), 0 0 9px rgba(85,194,74,.95); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .charge-button.active .charge-button-inner { animation: none; }
+}
+
 
 
 /* OFF notice: position/flex/gap/border/radius/shadow/weight via Bootstrap.

@@ -20,6 +20,19 @@
 
             <div class="calculator-flip">
                 <div class="calculator-grid">
+            <!-- Charging toggle: pinned to the casing (direct child of the grid,
+                 NOT the LCD .output) so it sits outside the screen, on the crown
+                 at the right corner of the "CALCULATOR PRO MAX" title row.
+                 Always visible — it works even while the calculator is OFF. -->
+            <button id="charge-button" class="charge-button d-inline-flex justify-content-center align-items-center p-0 border-0 bg-transparent user-select-none"
+                    type="button" aria-pressed="false" aria-label="Toggle charging" title="Toggle charging">
+                <span class="charge-button-inner rounded-circle d-inline-flex justify-content-center align-items-center">
+                    <svg viewBox="0 0 24 24" width="12" height="12" aria-hidden="true" focusable="false">
+                        <path fill="currentColor" d="M13 2 4.5 13.5H11L9.5 22 19 9.5h-6.5L13 2z"/>
+                    </svg>
+                </span>
+            </button>
+
             <div class="output d-flex flex-column justify-content-end text-end overflow-hidden">
                 <button id="power-switch" class="power-switch d-inline-flex p-0 border-0 bg-transparent user-select-none"
                         type="button" role="switch" aria-pressed="false" aria-label="Power switch">
@@ -39,6 +52,17 @@
 
                 <div id="previous-operand" class="previous-operand text-end text-nowrap overflow-hidden w-100 fw-medium"></div>
                 <div id="current-operand" class="current-operand text-end text-nowrap overflow-hidden w-100 fw-semibold"></div>
+
+                <!-- Dedicated charging screen: shown only while charging AND the
+                     calculator is OFF (when ON, the battery pill reports state). -->
+                <div id="charging-screen" class="charging-screen d-flex flex-column justify-content-center align-items-center gap-2" role="status" aria-live="polite" aria-label="Charging">
+                    <span class="charging-battery d-inline-flex align-items-center" aria-hidden="true">
+                        <span class="charging-battery-shell"><span id="charging-screen-level" class="charging-battery-level"></span></span>
+                        <span class="charging-battery-cap"></span>
+                    </span>
+                    <span id="charging-screen-percentage" class="charging-screen-percentage fw-semibold">0%</span>
+                    <span class="charging-screen-label fw-semibold">CHARGING</span>
+                </div>
 
                 <div id="toast" class="calc-toast position-absolute d-flex align-items-center gap-2 border rounded-3 shadow fw-medium overflow-hidden" role="status" aria-live="polite">
                     <span class="toast-icon d-inline-flex justify-content-center align-items-center rounded-circle fw-bold" aria-hidden="true">!</span>
