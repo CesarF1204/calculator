@@ -977,9 +977,9 @@ const batteryPercentage = document.getElementById('battery-percentage');
 const BATTERY_LOW_THRESHOLD = 20;        /* percent                          */
 const BATTERY_CRITICAL_THRESHOLD = 10;   /* percent                          */
 const BATTERY_MIN_LEVEL = 1;             /* percent — never displayed lower  */
-const BATTERY_SIM_START = 87;            /* simulated starting level, %      */
+const BATTERY_SIM_START = 100;            /* simulated starting level, %      */
 const BATTERY_SIM_STEP = 1;              /* percent lost per simulated tick  */
-const BATTERY_SIM_INTERVAL = 4000;       /* ms between simulated ticks       */
+const BATTERY_SIM_INTERVAL = 10000;       /* drain the battery every 10 seconds */
 
 let batteryLevelValue = null;    /* 0-100, null until first reading */
 let batteryCharging = false;
@@ -1078,6 +1078,9 @@ const showBattery = () => {
 */
 const startBatterySimulation = () => {
     if (batterySimTimer) return;
+    /* If a previous run stored a level (e.g. the calculator was powered
+       off, which pauses the drain), resume from that value. Otherwise
+       start fresh at BATTERY_SIM_START. */
     if (batteryLevelValue === null) batteryLevelValue = BATTERY_SIM_START;
     renderBattery();
     batterySimTimer = setInterval(() => {
@@ -1091,15 +1094,22 @@ const startBatterySimulation = () => {
 };
 
 /**
-* DOCU: Hides the battery indicator (when the calculator powers off). The <br>
-* simulation timer keeps running so the level continues to drain like a <br>
-* real device, and re-powering simply reveals it again. <br>
-* Last Updated Date: September 12, 2026 <br>
+* DOCU: Hides the battery indicator (when the calculator powers off) and <br>
+* pauses the simulated drain so the percentage stays frozen at its last <br>
+* value. Powering back on resumes the drain from that exact percentage. <br>
+* Last Updated Date: September 14, 2026 <br>
 * @function hideBattery
 * @author Cesar
 */
 const hideBattery = () => {
     batteryStatus.classList.remove('show');
+    /* Powering off stops the battery drain: clear the simulation timer so
+       the percentage freezes where it is. The stored batteryLevelValue is
+       kept, so re-powering resumes the drain from this exact level. */
+    if (batterySimTimer) {
+        clearInterval(batterySimTimer);
+        batterySimTimer = null;
+    }
 };
 
 /**
